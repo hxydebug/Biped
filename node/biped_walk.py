@@ -18,7 +18,6 @@ PI = math.pi
 pi  = PI
 D2R = PI / 180.0
 R2D = 180.0 / PI
-L = 1.2
 
 
 '''global value'''
@@ -51,8 +50,8 @@ Safe = 1
 Danger = 0
 
 '''leg property and limit''' 
-leg1_bias = [2.674, 2.593,  1.775]
-leg2_bias = [-2.931, -3.133, 0.834]
+leg1_bias = [2.674, 2.593,  1.775+(PI-2.6096)]
+leg2_bias = [-2.931, -3.133, 0.834-(PI-2.6096)]
 
 Leg1_Joint1_limt = [leg1_bias[0]-0.7, leg1_bias[0]+0.3]
 Leg1_Joint2_limt = [leg1_bias[1]-0.9, leg1_bias[1]+0.5]
@@ -95,154 +94,65 @@ class Leg:
 		self.flag = flag
 		self.rospub = rospub
 		self.foot_position = None
+		self.joint_position = None
 		self.cmd_array = None
 		self.Safety_Flag = Safe
 		self.Danger_info = 0
-		self.x0 = Leg_Origin[0]
-		self.y0 = Leg_Origin[1]
-		self.z0 = Leg_Origin[2]
-		self.L1 = Leg_Link_Length[0]
-		self.L2 = Leg_Link_Length[1]
-		self.L3 = Leg_Link_Length[2]
 
-	def forward_kine(self, angle_x, Q=None):
-		if Q is None:
-			c_1 = math.cos(self.Joint1_fb.Position)
-			s_1 = math.sin(self.Joint1_fb.Position)
-			c_2 = math.cos(self.Joint2_fb.Position)
-			s_2 = math.sin(self.Joint2_fb.Position)
-			c_3 = math.cos(self.Joint3_fb.Position)
-			s_3 = math.sin(self.Joint3_fb.Position)
-		else:
-			c_1 = math.cos(Q[0])
-			s_1 = math.sin(Q[0])
-			c_2 = math.cos(Q[1])
-			s_2 = math.sin(Q[1])
-			c_3 = math.cos(Q[2])
-			s_3 = math.sin(Q[2])
-		
-		c_ang_x = math.cos(angle_x)
-		s_ang_x = math.sin(angle_x)
+		self.L0 = Leg_Link_Length[0]
+		self.L1 = Leg_Link_Length[1]
+		self.L2 = Leg_Link_Length[2]
+
+	def forward_kine(self, Q):
+
+		c_0 = math.cos(Q[0])
+		s_0 = math.sin(Q[0])
+		c_1 = math.cos(Q[1])
+		s_1 = math.sin(Q[1])
+		c_2 = math.cos(Q[2])
+		s_2 = math.sin(Q[2])
 
 		if self.flag == 1:
-			foot_x = self.L3 * (c_1 * c_2 * s_3 + c_1 * c_3 * s_2) - self.L1 * s_1 + self.L2 * c_1 * c_2
-			foot_y = self.L3 * (c_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2) - s_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1)) - self.L2 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) + self.y0 * c_ang_x - self.z0 * s_ang_x + self.L1 * c_ang_x * c_1
-			foot_z = self.L2 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) - self.L3 * (c_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) - s_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1)) + self.z0 * c_ang_x + self.y0 * s_ang_x + self.L1 * c_1 * s_ang_x
+			foot_x =  self.L0*s_0 + self.L2*(c_0*c_1*s_2 + c_0*c_2*s_1) + self.L1*c_0*s_1
+			foot_y = -self.L0*c_0 + self.L2*(c_1*s_0*s_2 + c_2*s_0*s_1) + self.L1*s_0*s_1
+			foot_z = - self.L2*(c_1*c_2 - s_1*s_2) - self.L1*c_1
 
 			self.foot_position = [foot_x, foot_y, foot_z]
 
 		elif self.flag == 2:
-			foot_x = self.L1 * s_1 + self.L3 * (c_1 * c_2 * s_3 + c_1 * c_3 * s_2) + self.L2 * c_1 * c_2
-			foot_y = self.L3 * (c_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2) - s_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1)) - self.L2 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) - self.y0 * c_ang_x - self.z0 * s_ang_x - self.L1 * c_ang_x * c_1
-			foot_z = self.L2 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) - self.L3 * (c_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) - s_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1)) + self.z0 * c_ang_x - self.y0 * s_ang_x - self.L1 * c_1 * s_ang_x
+			foot_x =  - self.L0*s_0 - self.L2*(c_0*c_1*s_2 + c_0*c_2*s_1) - self.L1*c_0*s_1
+			foot_y = self.L0*c_0 - self.L2*(c_1*s_0*s_2 + c_2*s_0*s_1) - self.L1*s_0*s_1
+			foot_z = - self.L2*(c_1*c_2 - s_1*s_2) - self.L1*c_1
 
 			self.foot_position = [foot_x, foot_y, foot_z]
 
 		return self.foot_position
 
-	def Jocobian(self, angle_x, Q=None):
-		if Q is None: # use foodback angle
-			c_1 = math.cos(self.Joint1_fb.Position)
-			s_1 = math.sin(self.Joint1_fb.Position)
-			c_2 = math.cos(self.Joint2_fb.Position)
-			s_2 = math.sin(self.Joint2_fb.Position)
-			c_3 = math.cos(self.Joint3_fb.Position)
-			s_3 = math.sin(self.Joint3_fb.Position)
-		else: # user external angle
-			c_1 = math.cos(Q[0])
-			s_1 = math.sin(Q[0])
-			c_2 = math.cos(Q[1])
-			s_2 = math.sin(Q[1])
-			c_3 = math.cos(Q[2])
-			s_3 = math.sin(Q[2])           
-		
-		c_ang_x = math.cos(angle_x)
-		s_ang_x = math.sin(angle_x)
-		if self.flag == 1: # left leg
-			RotMat = np.array([
-				[ c_1 * c_2 * c_3 - c_1 * s_2 * s_3, -s_1, - c_1 * c_2 * s_3 - c_1 * c_3 * s_2],
-				[ - c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) - s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2), c_ang_x * c_1, s_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) - c_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2)],
-				[ c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2), c_1 * s_ang_x, c_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) - s_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1)]
-			])
+	def inverse_kine(self, P):
 
-			Jac = np.array([
-				[ - self.L3 * (c_2 * s_1 * s_3 + c_3 * s_1 * s_2) - self.L1 * c_1 - self.L2 * c_2 * s_1,  self.L3 * (c_1 * c_2 * c_3 - c_1 * s_2 * s_3) - self.L2 * c_1 * s_2, self.L3 * (c_1 * c_2 * c_3 - c_1 * s_2 * s_3)],
-				[ self.L3 * (c_ang_x * c_1 * c_2 * s_3 + c_ang_x * c_1 * c_3 * s_2) - self.L1 * c_ang_x * s_1 + self.L2 * c_ang_x * c_1 * c_2, - self.L2 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2) - self.L3 * (c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) + s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2)), -self.L3 * (c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) + s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2))],
-				[ self.L3 * (c_1 * c_2 * s_ang_x * s_3 + c_1 * c_3 * s_ang_x * s_2) - self.L1 * s_ang_x * s_1 + self.L2 * c_1 * c_2 * s_ang_x,   self.L2 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) + self.L3 * (c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2)),  self.L3 * (c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2))]
-			])
+		x = P[0]
+		y = P[1]
+		z = P[2]
 
-		elif self.flag == 2: # right leg
-			RotMat = np.array([
-					[  c_1 * c_2 * c_3 - c_1 * s_2 * s_3, -s_1, - c_1 * c_2 * s_3 - c_1 * c_3 * s_2],
-					[ - c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) - s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2), c_ang_x * c_1, s_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) - c_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2)],
-					[   c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2), c_1 * s_ang_x, c_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) - s_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1)]
-			])
- 
-			Jac =np.array([
-				[ self.L1 * c_1 - self.L3 * (c_2 * s_1 * s_3 + c_3 * s_1 * s_2) - self.L2 * c_2 * s_1,  self.L3 * (c_1 * c_2 * c_3 - c_1 * s_2 * s_3) - self.L2 * c_1 * s_2, self.L3 * (c_1 * c_2 * c_3 - c_1 * s_2 * s_3)],
-				[ self.L3 * (c_ang_x * c_1 * c_2 * s_3 + c_ang_x * c_1 * c_3 * s_2) + self.L1 * c_ang_x * s_1 + self.L2 * c_ang_x * c_1 * c_2, - self.L2 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2) - self.L3 * (c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) + s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2)), -self.L3 * (c_3 * (s_ang_x * s_2 - c_ang_x * c_2 * s_1) + s_3 * (c_2 * s_ang_x + c_ang_x * s_1 * s_2))],
-				[ self.L3 * (c_1 * c_2 * s_ang_x * s_3 + c_1 * c_3 * s_ang_x * s_2) + self.L1 * s_ang_x * s_1 + self.L2 * c_1 * c_2 * s_ang_x,   self.L2 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2) + self.L3 * (c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2)),  self.L3 * (c_3 * (c_ang_x * s_2 + c_2 * s_ang_x * s_1) + s_3 * (c_ang_x * c_2 - s_ang_x * s_1 * s_2))]
-			])
+		if self.flag == 1:
+			q2 = -math.acos((x*x + y*y + z*z - self.L0**2 - self.L1**2 - self.L2**2)/(2*self.L1*self.L2))
+			q0 = 2*math.atan((x-(x*x+y*y-self.L0*self.L0)**0.5)/(-y+self.L0))
+			a = -self.L2*math.cos(q2)-self.L1
+			b = self.L2*math.sin(q2)
+			c = z
+			q1 = 2*math.atan((b-(b*b+a*a-c*c)**0.5)/(a+c))
+			self.foot_position = [foot_x, foot_y, foot_z]
 
-		return Jac, RotMat
+		elif self.flag == 2:
+			q2 = math.acos((x*x + y*y + z*z - self.L0**2 - self.L1**2 - self.L2**2)/(2*self.L1*self.L2))
+			q0 = 2*math.atan((-x-(x*x+y*y-self.L0*self.L0)**0.5)/(y+self.L0))
+			a = -self.L2*math.cos(q2)-self.L1
+			b = self.L2*math.sin(q2)
+			c = z
+			q1 = 2*math.atan((b-(b*b+a*a-c*c)**0.5)/(a+c))
+			self.joint_position = [q0, q1, q2]
 
-	def ground_reaction(self, angle_x):
-		Joint_Tau = np.array([self.Joint1_fb.Torque, self.Joint2_fb.Torque, self.Joint3_fb.Torque])
-		Jac, R = self.Jocobian(angle_x)
-
-		Jac_T = np.transpose(Jac)
-		R_T = np.transpose(R)
-
-		foot_xyz = self.forward_kine(angle_x)
-		Force_G = -(np.linalg.inv(Jac_T.dot(R_T))).dot(np.transpose(Joint_Tau)) # negative sign for ground reaction force 
-		Torque_G = np.cross(foot_xyz, Force_G.tolist())  # cross produce for list only
-		return Force_G.tolist(), Torque_G
-
-
-	# def Inverse_Kine(self, foot_xyz_c, angle_x):
-	# 	''' define the foot position error function'''
-
-	# 	def Foot_Error_Fun(Q, *args):
-	# 		angle_x = args[0]
-	# 		foot_xyz_c = [args[1], args[2], args[3]]
-	# 		foot_xyz = self.forward_kine(angle_x, Q)
-	# 		return np.array(foot_xyz) - foot_xyz_c
-		
-	# 	Joint_Angle_0 = np.array([self.Joint1_fb.Position, self.Joint2_fb.Position,self.Joint3_fb.Position]) # use current joint angle as initial point 
-	# 	Joint_Angle = optimize.fsolve(Foot_Error_Fun, Joint_Angle_0, args=(angle_x, foot_xyz_c[0], foot_xyz_c[1], foot_xyz_c[2]))
-	# 	return Joint_Angle.tolist()
-	
-	def Traj_Plan(self, Joint_Angle_C, T, Joint_Angle_0=None):
-		'''define Trajecotry function'''
-		
-		if Joint_Angle_0 is None: # user current joint angle as initial angle
-			Q0 = [self.Joint1_fb.Position, self.Joint2_fb.Position, self.Joint3_fb.Position]
-		else: # user external angle as initial angle
-			Q0 = Joint_Angle_0
-		
-		Qd = Joint_Angle_C
-		''' Use 5-order Biezer Polynominal for interpolation, parameters identified by optimization '''
-		P =[0, 0.0009, -0.0041, 1.0000, 0.9986,1.0000]
-		P0 = P[0]
-		P1 = P[1]
-		P2 = P[2]
-		P3 = P[3]
-		P4 = P[4]
-		P5 = P[5]
-
-		s = T/T[-1]
-		B = P5*s**5 - P0*(s - 1)**5 + 5*P1*s*(s - 1)**4 - 5*P4*s**4*(s - 1) - 10*P2*s**2*(s - 1)**3 + 10*P3*s**3*(s - 1)**2
-		Bdots = 5*P5*s**4 - 5*P4*s**4 - 5*P0*(s - 1)**4 + 5*P1*(s - 1)**4 + 20*P1*s*(s - 1)**3 - 20*P2*s*(s - 1)**3 - 20*P4*s**3*(s - 1) + 10*P3*s**3*(2*s - 2) - 30*P2*s**2*(s - 1)**2 + 30*P3*s**2*(s - 1)**2
-		# Bddots = 20*P3*s**3 - 40*P4*s**3 + 20*P5*s**3 - 20*P0*(s - 1)**3 + 40*P1*(s - 1)**3 - 20*P2*(s - 1)**3 + 60*P1*s*(s - 1)**2 - 120*P2*s*(s - 1)**2 + 60*P3*s*(s - 1)**2 - 60*P4*s**2*(s - 1) - 30*P2*s**2*(2*s - 2) + 60*P3*s**2*(2*s - 2)
-
-		Joint1_Angle = Q0[0] + (Qd[0] - Q0[0]) * B
-		Joint2_Angle = Q0[1] + (Qd[1] - Q0[1]) * B
-		Joint3_Angle = Q0[2] + (Qd[2] - Q0[2]) * B
-
-		Joint1_Velocity = (Qd[0] - Q0[0]) * Bdots / T[-1]
-		Joint2_Velocity = (Qd[1] - Q0[1]) * Bdots / T[-1]
-		Joint3_Velocity = (Qd[2] - Q0[2]) * Bdots / T[-1]
-		return Joint1_Angle.tolist(), Joint2_Angle.tolist(), Joint3_Angle.tolist(), Joint1_Velocity.tolist(), Joint2_Velocity.tolist(), Joint3_Velocity.tolist()
+		return self.joint_position
 	
 	
 	def cmd_compose(self):
