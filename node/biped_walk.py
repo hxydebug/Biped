@@ -70,6 +70,62 @@ Leg_Link_Length = [0.0873, 0.2191, 0.2350]
 Flag_leg1 = 1
 Flag_leg2 = 2 
 
+swing_leg = 0
+stance_leg = 1
+
+nominal_stance_duration = [0.3,0.3]
+nominal_stance_dutyrate = [0.5, 0.5]
+# define gait class
+class Gait:
+	def __init__(self):
+
+		self.stance_duration = nominal_stance_duration
+		self.stance_dutyrate = nominal_stance_dutyrate
+
+		self.initial_leg_state = [swing_leg,stance_leg]
+		self.initial_leg_phase = [0,0]
+		self.initial_state_ratio_in_cycle = [0,0]
+		self.next_leg_state = [0,0]
+
+		self.desired_leg_state = [0,0]
+		self.leg_state = [0,0]
+		self.normalized_phase = [0,0]
+
+		for i in range(2):
+			if self.initial_leg_state[i] == swing_leg:
+				self.initial_state_ratio_in_cycle[i] = 1-stance_dutyrate[i]
+            	self.next_leg_state[i] = stance_leg
+			else:
+				self.initial_state_ratio_in_cycle[i] = stance_dutyrate[i]
+            	self.next_leg_state[i] = swing_leg
+
+	def update(self, current_time):
+
+		for leg_id in range(2):
+
+			full_cycle_period = self.stance_duration[leg_id] / self.stance_dutyrate[leg_id]
+			augmented_time = current_time + self.initial_leg_phase[leg_id] * full_cycle_period
+			phase_in_full_cycle = math.fmod(augmented_time,full_cycle_period) / full_cycle_period
+            ratio = self.initial_state_ratio_in_cycle[leg_id]
+
+			if phase_in_full_cycle < ratio:
+				self.desired_leg_state[leg_id] = self.initial_leg_state[leg_id]
+				self.normalized_phase[leg_id] = phase_in_full_cycle / ratio
+			else:
+				# A phase switch happens for this leg.
+				self.desired_leg_state[leg_id] = self.next_leg_state[leg_id]
+				self.normalized_phase[leg_id] = (phase_in_full_cycle - ratio) / (1 - ratio)
+
+			self.leg_state[leg_id] = self.desired_leg_state[leg_id]
+
+# define swing_controller class
+class swing_controller:
+	def __init__(self,leg,gait):
+
+		self.leg = leg
+		self.gait = gait
+		
+		self.last_leg_state = self.gait.
 
 # define joint class
 class Joint:
@@ -156,7 +212,7 @@ class Leg:
 	
 	
 	def cmd_compose(self):
-		if self.flag == 1:  # left leg
+		if self.flag == 1:  # right leg
 			self.cmd_array = [
 				-self.Joint1_cmd.Position + leg1_bias[0], -self.Joint1_cmd.Velocity, -self.Joint1_cmd.Torque, self.Joint1_cmd.Kp, self.Joint1_cmd.Kd,
 				 self.Joint2_cmd.Position + leg1_bias[1], self.Joint2_cmd.Velocity, self.Joint2_cmd.Torque, self.Joint2_cmd.Kp, self.Joint2_cmd.Kd,
@@ -166,25 +222,25 @@ class Leg:
 			print(self.cmd_array)
 			
 			'''safety check for command if winthin the range before send to publisher'''
-			# if (	self.cmd_array[0] < Leg1_Joint1_limt[0] or self.cmd_array[0] > Leg1_Joint1_limt[1]
-			# 	or 	self.cmd_array[5] < Leg1_Joint2_limt[0] or self.cmd_array[5] > Leg1_Joint2_limt[1]
-			# 	or 	self.cmd_array[10]< Leg1_Joint3_limt[0] or self.cmd_array[10] > Leg1_Joint3_limt[1]):
-			# 	self.Safety_Flag = Danger
-			# 	self.Danger_info = Cmd_violate
-			# 	# print(Leg1_Joint2_limt[0]-self.Joint2_cmd.Position)
-			# 	# print(Leg1_Joint2_limt[1]-self.Joint2_cmd.Position)
-			# 	# print(Leg1_Joint3_limt[0]-self.Joint3_cmd.Position)
-			# 	# print(Leg1_Joint3_limt[1]-self.Joint3_cmd.Position)
-			# 	self.safety_and_reset()
+			if (	self.cmd_array[0] < Leg1_Joint1_limt[0] or self.cmd_array[0] > Leg1_Joint1_limt[1]
+				or 	self.cmd_array[5] < Leg1_Joint2_limt[0] or self.cmd_array[5] > Leg1_Joint2_limt[1]
+				or 	self.cmd_array[10]< Leg1_Joint3_limt[0] or self.cmd_array[10] > Leg1_Joint3_limt[1]):
+				self.Safety_Flag = Danger
+				self.Danger_info = Cmd_violate
+				# print(Leg1_Joint2_limt[0]-self.Joint2_cmd.Position)
+				# print(Leg1_Joint2_limt[1]-self.Joint2_cmd.Position)
+				# print(Leg1_Joint3_limt[0]-self.Joint3_cmd.Position)
+				# print(Leg1_Joint3_limt[1]-self.Joint3_cmd.Position)
+				self.safety_and_reset()
 
-			# if (abs(self.Joint1_cmd.Position-self.Joint1_fb.Position)>PI/6.0 or abs(self.Joint3_cmd.Position-self.Joint3_fb.Position)>PI/6.0):
-			# 	# or abs(self.Joint2_cmd.Position-self.Joint2_fb.Position)>PI/6.0 
-			# 	self.Danger_info = Large_Error
-			# 	self.Safety_Flag = Danger
-			# 	self.safety_and_reset()
+			if (abs(self.Joint1_cmd.Position-self.Joint1_fb.Position)>PI/6.0 or abs(self.Joint3_cmd.Position-self.Joint3_fb.Position)>PI/6.0):
+				# or abs(self.Joint2_cmd.Position-self.Joint2_fb.Position)>PI/6.0 
+				self.Danger_info = Large_Error
+				self.Safety_Flag = Danger
+				self.safety_and_reset()
 			
 
-		elif self.flag == 2:  # right leg
+		elif self.flag == 2:  # left leg
 			self.cmd_array = [
 				-self.Joint1_cmd.Position + leg2_bias[0], -self.Joint1_cmd.Velocity, -self.Joint1_cmd.Torque, self.Joint1_cmd.Kp, self.Joint1_cmd.Kd,
 				-self.Joint2_cmd.Position + leg2_bias[1], -self.Joint2_cmd.Velocity, -self.Joint2_cmd.Torque, self.Joint2_cmd.Kp, self.Joint2_cmd.Kd,
@@ -196,13 +252,13 @@ class Leg:
 			if (	self.cmd_array[0] < Leg2_Joint1_limt[0] or self.cmd_array[0] > Leg2_Joint1_limt[1]
 				or 	self.cmd_array[5] < Leg2_Joint2_limt[0] or self.cmd_array[5] > Leg2_Joint2_limt[1]
 				or 	self.cmd_array[10]< Leg2_Joint3_limt[0] or self.cmd_array[10] > Leg2_Joint3_limt[1]):
-				# self.Safety_Flag = Danger
-				# self.Danger_info = Cmd_violate
+				self.Safety_Flag = Danger
+				self.Danger_info = Cmd_violate
 				# # print(Leg1_Joint2_limt[0]-self.Joint2_cmd.Position)
 				# # print(Leg1_Joint2_limt[1]-self.Joint2_cmd.Position)
 				# # print(Leg1_Joint3_limt[0]-self.Joint3_cmd.Position)
 				# # print(Leg1_Joint3_limt[1]-self.Joint3_cmd.Position)
-				# self.safety_and_reset()
+				self.safety_and_reset()
 				pass
 
 			if (abs(self.Joint1_cmd.Position-self.Joint1_fb.Position)>PI/6.0 or abs(self.Joint3_cmd.Position-self.Joint3_fb.Position)>PI/6.0 or abs(self.Joint2_cmd.Position-self.Joint2_fb.Position)>PI/6.0 ):
@@ -223,7 +279,7 @@ class Leg:
 		Leg_pub_cmd = Float32MultiArray()
 		Leg_pub_cmd.data = self.cmd_compose() # check position limit before pub
 		if self.Safety_Flag == Safe: # do not remove 
-			Leg2_pub.publish(Leg_pub_cmd)				
+			self.rospub.publish(Leg_pub_cmd)				
 
 	def safety_and_reset(self):
 		print('error...')
@@ -332,14 +388,11 @@ if __name__ == '__main__':
 	rospy.init_node('Test')
 
 	# publisch command
-	Leg1_pub = rospy.Publisher('/leg/leg2/cmd', Float32MultiArray, queue_size = 2)
+	Leg1_pub = rospy.Publisher('/leg/leg1/cmd', Float32MultiArray, queue_size = 2)
 	Leg2_pub = rospy.Publisher('/leg/leg2/cmd', Float32MultiArray, queue_size = 2)
 
 
-	'''!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!
-	Define leg after the pub function immediately and will be used immediately below in sub function
-	!!!!!!!!!!!!!!!!!!!!!Do not Move to otehr place !!!!!!!!!!!!!!!!!!!!!!!!!
-	!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!'''
+	'''!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!'''
 
 	Leg1 = Leg(Flag_leg1, Leg1_pub)	
 	if 'Leg1' not in globals(): # if leg1 not defined 
@@ -355,111 +408,52 @@ if __name__ == '__main__':
 		Leg2 = Leg(Flag_leg2, Leg2_pub)
 		print("Leg2 Created!")
 
-	'''!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!
-	Define Leg1 and Leg2 before Subscriber
-	!!!!!!!!!!!!!!!!!!!!!Do not Move to otehr place !!!!!!!!!!!!!!!!!!!!!!!!!
-	!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!'''
+	'''!!!!!!!!! Danger---Danger---Danger---Danger---Danger---Danger!!!!!!!!!'''
 
 	# feedback
-	#rospy.Subscriber('/leg/leg1/feedback', Float32MultiArray, Leg1_Cb)
+	rospy.Subscriber('/leg/leg1/feedback', Float32MultiArray, Leg1_Cb)
 	rospy.Subscriber('/leg/leg2/feedback', Float32MultiArray, Leg2_Cb)
 	
 	Frequency = 500
 	dt = 1.0/Frequency
 	rate = rospy.Rate(Frequency)
-	
-	'''verify that the robot position is updated for trajectory planing as the inital position'''
-
-	'''plan a trajectory with time duration delta_T'''
-	delta_T = 5.0
-	T = np.linspace(0, delta_T, round(delta_T*Frequency+1), endpoint=True)
-	Joint_Angle_C = [Leg1.Joint1_fb.Position, Leg1.Joint2_fb.Position+0.4, Leg1.Joint3_fb.Position]
-	Q1, Q2, Q3, d_Q1, d_Q2, d_Q3 = Leg1.Traj_Plan(Joint_Angle_C, T)
-
-	# New Trajectory
-	
-	#Q1 = Leg1.Joint1_fb.Position
-	# Q2 = np.linspace(0, PI/2, round(delta_T*Frequency+1), endpoint=True)
-	# d_Q2 = np.ones(1,round(PI/2*Frequency+1))
-
 
 	'''print data to file'''
 	File_name = time.strftime('%Y_%m_%d_%H_%M_%S')
 	file = open('./Data/Exp_' + File_name + '.txt', 'w')
 	time.sleep (1.5)
 	
-	
 
-	i = 0
-	count = 0
-	loop_count = 0
 	print('----------Rospy Loop Started----------')
 	T0 = rospy.get_time ()
 	while not rospy.is_shutdown():
 		t = rospy.get_time() - T0
-		yaw = 0
 		
 		'''publish the planned trajectory one point by one point'''
+
+
+
+		''' pd and torque set '''
 		
-		if True:
-			if count < 500*5:
-				Leg2.Joint2_cmd.Position = 0.2
-				Leg2.Joint3_cmd.Position = -math.pi/2
-			
-			elif (count>=500*5 and count<= 1000*5):
-				Leg2.Joint2_cmd.Position += 0.2/500
-				tmp1 = Leg2.Joint2_cmd.Position
-				Leg2.Joint2_cmd.Velocity = 0
-				Leg2.Joint3_cmd.Position -= 0
-				tmp2 = Leg2.Joint3_cmd.Position
-				
-			elif (count>=1000*5 and count<= 1500*5):
-				Leg2.Joint2_cmd.Position -= 0.2/500
-				Leg2.Joint2_cmd.Velocity = 0.0
-				Leg2.Joint3_cmd.Position += 0
+		Leg1.Joint1_cmd.Torque = 0.0# 0
+		Leg1.Joint1_cmd.Kp = 80.0# 110.0
+		Leg1.Joint1_cmd.Kd = 6.0# 6.0
+		Leg1.Joint2_cmd.Torque = 0.0# 0
+		Leg1.Joint2_cmd.Kp = 80.0# 110.0
+		Leg1.Joint2_cmd.Kd = 6.0# 6.0
+		Leg1.Joint3_cmd.Torque = 0.0# 0
+		Leg1.Joint3_cmd.Kp = 80.0# 110.0
+		Leg1.Joint3_cmd.Kd = 6.0# 6.0
 
-			elif (count>1500*5):
-				Leg2.Joint2_cmd.Position += 0
-				Leg2.Joint3_cmd.Position += 0
-
-
-			Leg1.Joint2_cmd.Velocity = 0
-			Leg1.Joint1_cmd.Torque = 0.0# 0
-			Leg1.Joint1_cmd.Kp = 100.0# 110.0
-			Leg1.Joint1_cmd.Kd = 15.0# 6.0
-			Leg1.Joint2_cmd.Torque = 0.0# 0
-			Leg1.Joint2_cmd.Kp = 100.0# 110.0
-			Leg1.Joint2_cmd.Kd = 15.0# 6.0
-			Leg1.Joint3_cmd.Torque = 0.0# 0
-			Leg1.Joint3_cmd.Kp = 110.0# 110.0
-			Leg1.Joint3_cmd.Kd = 15.0# 6.0
-
-			Leg2.Joint2_cmd.Velocity = 0
-			Leg2.Joint1_cmd.Torque = 0.0# 0
-			Leg2.Joint1_cmd.Kp = 0.0# 110.0
-			Leg2.Joint1_cmd.Kd = 30.0# 6.0
-			Leg2.Joint2_cmd.Torque = 0.0# 0
-			Leg2.Joint2_cmd.Kp = 110.0# 110.0
-			Leg2.Joint2_cmd.Kd = 6.0# 6.0
-			Leg2.Joint3_cmd.Kp = 0.0# 110.0
-			Leg2.Joint3_cmd.Kd = 0.0# 6.0
-
-			count = count + 1 
-			#print('real 2:',Leg2.Joint2_cmd.Position + leg2_bias[1])
-			#print('real 3',Leg2.Joint3_cmd.Position + leg2_bias[2])
-			
-			i = i+1
-			# print(i)
-			# print(count)
-			# print(i)
-			# '''publish the planned trajectory one point by one point'''
-			# '''check encoder reading and command sending are within the joint angle range
-			# otherwise stop the leg'''
-				# print(11111, Leg1.Joint1_fb.Position, Leg1.Joint2_fb.Position, Leg1.Joint3_fb.Position)
-				# print(22222, Leg1.Joint1_cmd.Position, Leg1.Joint2_cmd.Velocity, Leg1.Joint3_cmd.Position)
-
-
-		
+		Leg2.Joint1_cmd.Torque = 0.0# 0
+		Leg2.Joint1_cmd.Kp = 80.0# 110.0
+		Leg2.Joint1_cmd.Kd = 6.0# 6.0
+		Leg2.Joint2_cmd.Torque = 0.0# 0
+		Leg2.Joint2_cmd.Kp = 80.0# 110.0
+		Leg2.Joint2_cmd.Kd = 6.0# 6.0
+		Leg2.Joint3_cmd.Torque = 0.0# 0
+		Leg2.Joint3_cmd.Kp = 80.0# 110.0
+		Leg2.Joint3_cmd.Kd = 6.0# 6.0
 		
 
 		'''check encoder reading and command sending are within the joint angle range
@@ -467,15 +461,14 @@ if __name__ == '__main__':
 		# print(11111, Leg1.Joint1_fb.Position, Leg1.Joint2_fb.Position, Leg1.Joint3_fb.Position)
 		# print(22222, Leg1.Joint1_cmd.Position, Leg1.Joint2_cmd.Velocity, Leg1.Joint3_cmd.Position)
 		
-		# if Leg1.Safety_Flag == Danger: 
-		# 	Leg1.safety_and_reset()
-		# 	rospy.signal_shutdown("Stopped! Error Occured!")
-		# 	print("----------Rospy Loop Stopped!----------")
-		# 	print("Leg_cmd: ", Leg1.cmd_array[0],  Leg1.cmd_array[5],  Leg1.cmd_array[10])
-		# 	break
-		# elif Leg1.Safety_Flag == Safe:
-		# 	a = 1
-		# 	Leg1.control()
+		if Leg1.Safety_Flag == Danger: 
+			Leg1.safety_and_reset()
+			rospy.signal_shutdown("Stopped! Error Occured!")
+			print("----------Rospy Loop Stopped!----------")
+			print("Leg_cmd: ", Leg1.cmd_array[0],  Leg1.cmd_array[5],  Leg1.cmd_array[10])
+			break
+		elif Leg1.Safety_Flag == Safe:
+			Leg1.control()
 			
 		if Leg2.Safety_Flag == Danger: 
 			Leg2.safety_and_reset()
@@ -484,7 +477,6 @@ if __name__ == '__main__':
 			print("Leg_cmd: ", Leg2.cmd_array[0],  Leg2.cmd_array[5],  Leg2.cmd_array[10])
 			break
 		elif Leg2.Safety_Flag == Safe:
-			a = 1
 			Leg2.control()
 
 
