@@ -93,10 +93,10 @@ class Gait:
 
 		for i in range(2):
 			if self.initial_leg_state[i] == swing_leg:
-				self.initial_state_ratio_in_cycle[i] = 1-stance_dutyrate[i]
+				self.initial_state_ratio_in_cycle[i] = 1-self.stance_dutyrate[i]
             	self.next_leg_state[i] = stance_leg
 			else:
-				self.initial_state_ratio_in_cycle[i] = stance_dutyrate[i]
+				self.initial_state_ratio_in_cycle[i] = self.stance_dutyrate[i]
             	self.next_leg_state[i] = swing_leg
 
 	def update(self, current_time):
