@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/nvidia/Biped/build/devel/setup.sh

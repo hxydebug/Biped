@@ -658,7 +658,6 @@ int main(int argc, char **argv)
     strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
 
     control_threadcreate();    
-    optm_begin = 1;
 
     signal(SIGINT, sighand);
 
@@ -801,7 +800,6 @@ void legstate_update(){
     leg_state.varphi = varphi;
     leg_state.dvarphi = dvarphi;
     leg_state.accx = acc[0];
-    leg_state.optmT = optm_result;
     leg_state.body_v = body_v;
 }
 

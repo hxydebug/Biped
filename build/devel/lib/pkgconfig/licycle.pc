@@ -1,0 +1,8 @@
+prefix=/home/nvidia/Biped/build/devel
+
+Name: licycle
+Description: Description of licycle
+Version: 0.0.0
+Cflags: 
+Libs: -L/home/nvidia/Biped/build/devel/lib 
+Requires: 

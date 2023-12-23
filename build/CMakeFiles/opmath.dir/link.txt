@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC   -shared -Wl,-soname,libopmath.so -o devel/lib/libopmath.so CMakeFiles/opmath.dir/src/opmath.cpp.o 

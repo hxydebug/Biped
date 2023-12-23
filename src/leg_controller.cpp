@@ -48,9 +48,6 @@ leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_l
 	Kinematics(&init_angle[0],&init_pos[0],0);
     Kinematics(&init_angle[1],&init_pos[1],1);
 
-	this->stance_end = 0;
-	this->stance_begin = 0;
-
 	gait_generate = gait_gen;
 	swctr = swc;
 	stctr = stc;
@@ -157,50 +154,6 @@ Eigen::VectorXd leg_controller::tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen:
   return dGain.cwiseProduct(vT-vA) + pGain.cwiseProduct(pT-pA);
 
 }
-
-void leg_controller::goto_xyz(float xx,float yy,float zz,Leg direction){
-  //define the variables
-  Angle now_angle;
-  Position now_position;
-  Position now_velocity;
-
-  //get the joint angle position and velocity
-  
-  if(direction == l_leg){
-    for(int i(0);i<3;i++){
-        now_angle.q[i] = leg->cbdata[i].p;
-    }
-  }
-  else{
-    for(int i(0);i<3;i++){
-        now_angle.q[i] = leg->cbdata[i+3].p;
-    }
-  }
-
-  //get the end point position and velocity using forward kinematics and jacobian
-  Kinematics(&now_angle,&now_position,direction);
-
-  now_velocity.x = 0;
-  now_velocity.y = 0;
-  now_velocity.z = 0;
-
-  //input the desire position and velocity
-  Position pdes;
-  Position vdes;
-
-  pdes.x = xx;
-  pdes.y = yy;
-  pdes.z = zz;
-
-  vdes.x = 0;
-  vdes.y = 0;
-  vdes.z = 0;
-
-  //init chabu
-  init_chabu(&pdes,&vdes,&now_position,&now_velocity,stepnum,direction);
-
-}
-
 
 void set_xyz(Leg leg,Angle *angle,float xx,float yy,float zz){
   Position pos;
