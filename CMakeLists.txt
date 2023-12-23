@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(licycle)
+project(Biped)
 
 find_package(catkin REQUIRED COMPONENTS
   roscpp
@@ -46,7 +46,7 @@ target_include_directories(opmath PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_link_libraries(gait_generator PUBLIC)
 target_include_directories(gait_generator PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-target_link_libraries(stance_leg_controller PUBLIC qpOASES gait_generator)
+target_link_libraries(stance_leg_controller PUBLIC qpOASES gait_generator opmath)
 target_include_directories(stance_leg_controller PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 target_link_libraries(swing_leg_controller PUBLIC gait_generator)
@@ -62,6 +62,6 @@ add_library(motor_drive	src/motor_drive.cpp)
 target_link_libraries(motor_drive PUBLIC)
 target_include_directories(motor_drive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-add_executable(licycle_control node/bikebot_control.cpp)
-target_link_libraries(licycle_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control)
+add_executable(Biped_control node/bikebot_control.cpp)
+target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control)
 
