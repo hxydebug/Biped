@@ -631,41 +631,137 @@ int main(int argc, char **argv)
     thread_setup();
 
     //启动电机
-    setup_motors();
-
+    // setup_motors();
+    // can0_tx(set_foc,2);
     //判断leg硬件是否就绪
-    while(can0_recieved == 0 || can1_recieved == 0);
+    // while(can0_recieved == 0 || can1_recieved == 0);
 
     sleep(1);
-    legstate_update();
-    safety_det_begin = 1;
 
-    //腿初始化
-    setpoint(0.16,0.08,-0.12);
-    setpoint1(0.05,0.13,-0.34);//0.04
-    cout<<"leg init finished!"<<endl;
+    /*********linmot begin***********/
+    struct can_frame frame;
+    frame.can_id  = 0x80;
+    frame.can_dlc = 0;
+    write(socket0, &frame, sizeof(struct can_frame));
+    Sleep_us(2000);
 
-    legstate_update();
-    for(int i=0;i<6;i++){
-        cb_Inf(leg_state.cbdata+i);
-    }
-    printf("\r\n");
+    uint8_t PDO1[8] = {0x3F, 0x00, 0x00, 0x09, 0x00, 0x00, 0xE8, 0x03};
+    uint8_t PDO2[8] = {0x64, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00};
 
-    //wait 1s
+    struct can_frame Linmotframe;
+    Linmotframe.can_id  = 0x0201;
+    Linmotframe.can_dlc = 8;
+    memcpy(Linmotframe.data,PDO1,8);
+    write(socket0, &Linmotframe, sizeof(struct can_frame));
+    Sleep_us(2000);
+
+    Linmotframe.can_id  = 0x0301;
+    Linmotframe.can_dlc = 8;
+    memcpy(Linmotframe.data,PDO2,8);
+    write(socket0, &Linmotframe, sizeof(struct can_frame));
     sleep(1);
+    uint8_t num = 0x00;
+    int count = 0;
+  
+    // cout<<int(num)<<endl;
+    frame.can_id  = 0x80;
+    frame.can_dlc = 0;
+    write(socket0, &frame, sizeof(struct can_frame));
 
-    time_t tt = time(NULL);
-    strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
+    /*********linmot end***********/
 
-    control_threadcreate();    
+    // reset_motors();
+    //test
+    // cmd_transfer(2,&L_msgs[1],0.5,0,60,0.2,0);
+    // can0_tx(L_msgs[1].data,2);
+
+    // legstate_update();
+    // safety_det_begin = 1;
+
+    // //腿初始化
+    // setpoint(0.16,0.08,-0.12);
+    // setpoint1(0.05,0.13,-0.34);//0.04
+    // cout<<"leg init finished!"<<endl;
+
+    // legstate_update();
+    // for(int i=0;i<6;i++){
+    //     cb_Inf(leg_state.cbdata+i);
+    // }
+    // printf("\r\n");
+
+    // //wait 1s
+    // sleep(1);
+
+    // time_t tt = time(NULL);
+    // strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
+
+    // control_threadcreate();    
 
     signal(SIGINT, sighand);
 
     while(!shut_down){
+        // reset_motors();
+        // setup_motors();
+        // can0_tx(L_msgs[1].data,2);
+        // legstate_update();
+        // cb_Inf(leg_state.cbdata+0);
+        // cb_Inf(leg_state.cbdata+1);
+        // cb_Inf(leg_state.cbdata+2);
 
+        /*********linmot begin***********/
+        frame.can_id  = 0x80;
+        frame.can_dlc = 0;
+        write(socket0, &frame, sizeof(struct can_frame));
+
+        // change the 0x090x
+        num = PDO1[2];
+        num++;
+        if (int(num) >= 16) {
+            num = 0x00;
+        }
+        PDO1[2] = num;
+
+        // change the position
+        if(count == 0){
+            PDO1[4] = 0xF4;
+            PDO1[5] = 0x01;
+            count = 1;
+        }
+        else{
+            PDO1[4] = 0x00;
+            PDO1[5] = 0x00;
+            count = 0;
+        }
+
+        Linmotframe.can_id  = 0x0201;
+        Linmotframe.can_dlc = 8;
+        memcpy(Linmotframe.data,PDO1,8);
+        write(socket0, &Linmotframe, sizeof(struct can_frame));
+        Sleep_us(2000);
+
+        Linmotframe.can_id  = 0x0301;
+        Linmotframe.can_dlc = 8;
+        memcpy(Linmotframe.data,PDO2,8);
+        write(socket0, &Linmotframe, sizeof(struct can_frame));
+        Sleep_us(2000);
+
+        
+        cout<<hex<<int(PDO1[0])<<int(PDO1[1])<<int(PDO1[2])<<int(PDO1[3])<<endl;
+        cout<<hex<<int(PDO1[4])<<int(PDO1[5])<<int(PDO1[6])<<int(PDO1[7])<<endl;
+        
+        // cout<<hex<<int(num)<<endl;
+
+        /*********linmot end***********/
+
+
+
+        // printf("\r\n");
+        // sleep(1);
+        Sleep_us(200000);
+        // Sleep_us(20000);
     }
 
-    reset_motors();
+    // reset_motors();
     cout<<"done!"<<endl;
 
     /* Join the thread and wait until it is done */
@@ -682,56 +778,56 @@ void thread_setup(void){
     pthread_t tids[4];
     int ret;
 
-    struct sched_param param;
-    pthread_attr_t attr;
+    // struct sched_param param;
+    // pthread_attr_t attr;
 
-    /* Initialize pthread attributes (default values) */
-    ret = pthread_attr_init(&attr);
-    if (ret) {
-            printf("init pthread attributes failed\n");
-    }
-    /* Set a specific stack size  */
-    ret = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-    if (ret) {
-        printf("pthread setstacksize failed\n");
-    }
-    /* Set scheduler policy and priority of pthread */
-    ret = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-    if (ret) {
-            printf("pthread setschedpolicy failed\n");
-    }
-    param.sched_priority = 49;
-    ret = pthread_attr_setschedparam(&attr, &param);
-    if (ret) {
-            printf("pthread setschedparam failed\n");
-    }
-    // /* Use scheduling parameters of attr */
-    ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    if (ret) {
-            printf("pthread setinheritsched failed\n");
-    }
-    pthread_attr_getschedparam(&attr, &param);
-    cout<<"can_thread prior:"<<param.sched_priority<<endl;
+    // /* Initialize pthread attributes (default values) */
+    // ret = pthread_attr_init(&attr);
+    // if (ret) {
+    //         printf("init pthread attributes failed\n");
+    // }
+    // /* Set a specific stack size  */
+    // ret = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+    // if (ret) {
+    //     printf("pthread setstacksize failed\n");
+    // }
+    // /* Set scheduler policy and priority of pthread */
+    // ret = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    // if (ret) {
+    //         printf("pthread setschedpolicy failed\n");
+    // }
+    // param.sched_priority = 49;
+    // ret = pthread_attr_setschedparam(&attr, &param);
+    // if (ret) {
+    //         printf("pthread setschedparam failed\n");
+    // }
+    // // /* Use scheduling parameters of attr */
+    // ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    // if (ret) {
+    //         printf("pthread setinheritsched failed\n");
+    // }
+    // pthread_attr_getschedparam(&attr, &param);
+    // cout<<"can_thread prior:"<<param.sched_priority<<endl;
     //参数依次是：创建的线程id，线程参数，调用的函数，传入的函数参数
-    ret = pthread_create(&tids[0], &attr, Can0_thread, NULL);
+    ret = pthread_create(&tids[0], NULL, Can0_thread, NULL);
     if (ret != 0){
         cout << "pthread_create0 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids[1], &attr, Can1_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create1 error: error_code=" << ret << endl;
-    }
+    // ret = pthread_create(&tids[1], NULL, Can1_thread, NULL);
+    // if (ret != 0){
+    //     cout << "pthread_create1 error: error_code=" << ret << endl;
+    // }
 
-    ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create2 error: error_code=" << ret << endl;
-    }
+    // ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
+    // if (ret != 0){
+    //     cout << "pthread_create2 error: error_code=" << ret << endl;
+    // }
 
-    ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
-    }
+    // ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
+    // if (ret != 0){
+    //     cout << "pthread_create3 error: error_code=" << ret << endl;
+    // }
 
 }
 
@@ -862,7 +958,7 @@ void reset_motors(){
 void setup_motors(){
     for(int i=1;i<=3;i++){
         can0_tx(set_foc,i);
-        can1_tx(set_foc,i+bias);
+        // can1_tx(set_foc,i+bias);
         //sleep
         Sleep_us(300);
 
