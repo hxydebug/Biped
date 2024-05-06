@@ -631,44 +631,12 @@ int main(int argc, char **argv)
     thread_setup();
 
     //启动电机
-    // setup_motors();
-    // can0_tx(set_foc,2);
+    setup_motors();
+
     //判断leg硬件是否就绪
-    // while(can0_recieved == 0 || can1_recieved == 0);
+    while(can0_recieved == 0 || can1_recieved == 0);
 
     sleep(1);
-
-    /*********linmot begin***********/
-    struct can_frame frame;
-    frame.can_id  = 0x80;
-    frame.can_dlc = 0;
-    write(socket0, &frame, sizeof(struct can_frame));
-    Sleep_us(2000);
-
-    uint8_t PDO1[8] = {0x3F, 0x00, 0x00, 0x09, 0x00, 0x00, 0xE8, 0x03};
-    uint8_t PDO2[8] = {0x64, 0x00, 0x64, 0x00, 0x00, 0x00, 0x00, 0x00};
-
-    struct can_frame Linmotframe;
-    Linmotframe.can_id  = 0x0201;
-    Linmotframe.can_dlc = 8;
-    memcpy(Linmotframe.data,PDO1,8);
-    write(socket0, &Linmotframe, sizeof(struct can_frame));
-    Sleep_us(2000);
-
-    Linmotframe.can_id  = 0x0301;
-    Linmotframe.can_dlc = 8;
-    memcpy(Linmotframe.data,PDO2,8);
-    write(socket0, &Linmotframe, sizeof(struct can_frame));
-    sleep(1);
-    uint8_t num = 0x00;
-    int count = 0;
-  
-    // cout<<int(num)<<endl;
-    frame.can_id  = 0x80;
-    frame.can_dlc = 0;
-    write(socket0, &frame, sizeof(struct can_frame));
-
-    /*********linmot end***********/
 
     // reset_motors();
     //test
@@ -683,11 +651,11 @@ int main(int argc, char **argv)
     // setpoint1(0.05,0.13,-0.34);//0.04
     // cout<<"leg init finished!"<<endl;
 
-    // legstate_update();
-    // for(int i=0;i<6;i++){
-    //     cb_Inf(leg_state.cbdata+i);
-    // }
-    // printf("\r\n");
+    legstate_update();
+    for(int i=0;i<6;i++){
+        cb_Inf(leg_state.cbdata+i);
+    }
+    printf("\r\n");
 
     // //wait 1s
     // sleep(1);
@@ -700,68 +668,21 @@ int main(int argc, char **argv)
     signal(SIGINT, sighand);
 
     while(!shut_down){
-        // reset_motors();
-        // setup_motors();
-        // can0_tx(L_msgs[1].data,2);
-        // legstate_update();
-        // cb_Inf(leg_state.cbdata+0);
-        // cb_Inf(leg_state.cbdata+1);
-        // cb_Inf(leg_state.cbdata+2);
 
-        /*********linmot begin***********/
-        frame.can_id  = 0x80;
-        frame.can_dlc = 0;
-        write(socket0, &frame, sizeof(struct can_frame));
-
-        // change the 0x090x
-        num = PDO1[2];
-        num++;
-        if (int(num) >= 16) {
-            num = 0x00;
+        reset_motors();
+        legstate_update();
+        for(int i=0;i<6;i++){
+            cb_Inf(leg_state.cbdata+i);
         }
-        PDO1[2] = num;
-
-        // change the position
-        if(count == 0){
-            PDO1[4] = 0xF4;
-            PDO1[5] = 0x01;
-            count = 1;
-        }
-        else{
-            PDO1[4] = 0x00;
-            PDO1[5] = 0x00;
-            count = 0;
-        }
-
-        Linmotframe.can_id  = 0x0201;
-        Linmotframe.can_dlc = 8;
-        memcpy(Linmotframe.data,PDO1,8);
-        write(socket0, &Linmotframe, sizeof(struct can_frame));
-        Sleep_us(2000);
-
-        Linmotframe.can_id  = 0x0301;
-        Linmotframe.can_dlc = 8;
-        memcpy(Linmotframe.data,PDO2,8);
-        write(socket0, &Linmotframe, sizeof(struct can_frame));
-        Sleep_us(2000);
-
-        
-        cout<<hex<<int(PDO1[0])<<int(PDO1[1])<<int(PDO1[2])<<int(PDO1[3])<<endl;
-        cout<<hex<<int(PDO1[4])<<int(PDO1[5])<<int(PDO1[6])<<int(PDO1[7])<<endl;
-        
-        // cout<<hex<<int(num)<<endl;
-
-        /*********linmot end***********/
-
-
+        printf("\r\n");
 
         // printf("\r\n");
-        // sleep(1);
-        Sleep_us(200000);
+        sleep(1);
+        // Sleep_us(200000);
         // Sleep_us(20000);
     }
 
-    // reset_motors();
+    reset_motors();
     cout<<"done!"<<endl;
 
     /* Join the thread and wait until it is done */
@@ -814,10 +735,10 @@ void thread_setup(void){
         cout << "pthread_create0 error: error_code=" << ret << endl;
     }
 
-    // ret = pthread_create(&tids[1], NULL, Can1_thread, NULL);
-    // if (ret != 0){
-    //     cout << "pthread_create1 error: error_code=" << ret << endl;
-    // }
+    ret = pthread_create(&tids[1], NULL, Can1_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create1 error: error_code=" << ret << endl;
+    }
 
     // ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
     // if (ret != 0){
@@ -958,7 +879,7 @@ void reset_motors(){
 void setup_motors(){
     for(int i=1;i<=3;i++){
         can0_tx(set_foc,i);
-        // can1_tx(set_foc,i+bias);
+        can1_tx(set_foc,i+bias);
         //sleep
         Sleep_us(300);
 

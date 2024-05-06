@@ -5,7 +5,7 @@
 #include <iostream>
 #include "opmath.h"
 
-#define bias 8
+#define bias 0
 
 
 #define P_MIN -12.5f
@@ -16,11 +16,13 @@
 #define KP_MAX 500.0f
 #define KD_MIN 0.0f
 #define KD_MAX 5.0f
-#define T_MIN -24.0f
-#define T_MAX 24.0f
+#define T_MIN -48.0f
+#define T_MAX 48.0f
 
 static uint8_t reset[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
 static uint8_t set_foc[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
+
+static float initial_angle_bias[6] = {0.6189, -0.7483, -1.4127, -1.4616, 0.4526, 0.6062};
 
 typedef struct{
 	uint8_t data[8];

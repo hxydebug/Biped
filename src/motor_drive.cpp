@@ -1,7 +1,7 @@
 #include "motor_drive.h"
 #include <math.h>
 
-float rate = 30.0/19.0;
+float rate = 1.0;
 
 int float_to_uint(float x, float x_min, float x_max, int bits){
     /// Converts a float to an unsigned int, given range and number of bits ///
@@ -31,8 +31,9 @@ void cb_trans(CANMessage *msg,CBData *cb){
 		for(int i=0;i<6;i++){
 			cb_transfer(msg[i],cb + i);
 		}
-		cb[2].p = cb[2].p/rate;
-		cb[5].p = cb[5].p/rate;
+        for(int i=0;i<6;i++){
+			cb[i].p += -initial_angle_bias[i];
+		}
 		
 }
 
@@ -41,8 +42,8 @@ void cb_Inf(CBData *cb){
 		printf("p:%f ",cb->p*180.0/PI);
 //		printf("p:%f ",cb->p);
 //		printf("v:%f ",cb->v);
-		printf("T:%f ",cb->t);
-//		printf("\n");
+		// printf("T:%f ",cb->t);
+		printf("\n");
 }
 
 void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,float t){

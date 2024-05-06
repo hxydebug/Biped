@@ -65,7 +65,7 @@ Joint_Velocity_Limit = PI/6.0
 
 Leg_Origin = [0.0, 0.0, 0.0]
 # L1 = 0.0873 L2 = 0.2191 L3 = 0.2350
-Leg_Link_Length = [0.0873, 0.2191, 0.2350]
+Leg_Link_Length = [0.08915, 0.2202, 0.248158]
 	
 Flag_leg1 = 1
 Flag_leg2 = 2 
