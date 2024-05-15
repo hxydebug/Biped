@@ -101,8 +101,8 @@ Eigen::VectorXd stance_leg_controller::get_action(void){
         l_angle.q[i] = licycle->cbdata[i].p;
         r_angle.q[i] = licycle->cbdata[i+3].p;
     }
-    Kinematics_global(&l_angle,&l_position,0);
-    Kinematics_global(&r_angle,&r_position,1);
+    Kinematics(&l_angle,&l_position,0);
+    Kinematics(&r_angle,&r_position,1);
     foot_positions << l_position.x, r_position.x,
                       l_position.y, r_position.y, 
                       l_position.z + 0.34, r_position.z + 0.34;

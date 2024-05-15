@@ -79,8 +79,8 @@ void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,f
     }
     
     //力矩限制
-    if(t < -23.0) t = -23.0;
-    if(t > 23.0) t = 23.0;
+    if(t < -24.0) t = -24.0;
+    if(t > 24.0) t = 24.0;
     
     if(id%3 == 0) p = p*rate;
     int p_int = float_to_uint(p,P_MIN,P_MAX,16);

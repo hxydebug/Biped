@@ -102,7 +102,7 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
 
       //get joint[i] angles
       Angle ans1;
-      Inv_kinematics_global(&ans1,&foot_position1,i);
+      Inv_kinematics(&ans1,&foot_position1,i);
       Eigen::Vector3d angs;
       for(int j(0);j<3;j++){
         angs[j] = ans1.q[j];
@@ -134,7 +134,7 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
 
       //get joint[i] angles
       Angle ans;
-      Inv_kinematics_global(&ans,&foot_position,i);
+      Inv_kinematics(&ans,&foot_position,i);
       Eigen::Vector3d angs;
       for(int j(0);j<3;j++){
         angs[j] = ans.q[j];

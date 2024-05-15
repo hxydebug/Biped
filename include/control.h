@@ -5,18 +5,20 @@
 #include <Eigen/Dense>
 #include "opmath.h"
 
+#define fl 0
+#define fr 1
 
 #define l_leg 0
 #define r_leg 1
 
-#define Len0 0.0755f
-#define Len1 0.2115f
-#define Len2 0.22f
+#define Len0 0.08915f
+#define Len1 0.2202f
+#define Len2 0.24816f
 
-#define wid 0.26f
+#define wid 0.1f
 #define detx 0.02f
-#define detz 0.035f
-#define hG 0.365f
+#define detz 0.14f
+#define hG 0.338f
 
 typedef int Leg;
 
@@ -33,8 +35,8 @@ typedef struct{
 //general
 void Kinematics(Angle *angle,Position *position,Leg leg);
 void Inv_kinematics(Angle *angle,Position *position,Leg leg);
-void Kinematics_global(Angle *angle,Position *position,Leg leg);
-void Inv_kinematics_global(Angle *angle,Position *position,Leg leg);
+void Kinematics_ref(Angle *angle,Position *position,Leg leg);
+void Inv_kinematics_ref(Angle *angle,Position *position,Leg leg);
 Eigen::MatrixXd calcu_Jaco(Eigen::Vector3d angle,Leg leg);
 Eigen::MatrixXd calcu_Jaco(Angle angle,Leg leg);
 Position getFootPositionInBaswFrame(Eigen::VectorXd angle, Leg leg);

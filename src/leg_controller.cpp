@@ -161,7 +161,7 @@ void set_xyz(Leg leg,Angle *angle,float xx,float yy,float zz){
   pos.y = yy;
   pos.z = zz;
 
-  Inv_kinematics(angle,&pos,leg);
+  Inv_kinematics_ref(angle,&pos,leg);
 }
 
 void init_chabu(Position *pdes,Position *vdes,Position *pini,Position *vini,float tf,Leg leg){

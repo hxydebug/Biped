@@ -7,12 +7,6 @@
 #include "stance_leg_controller.h"
 #include "control.h"
 
-#define trytest 2
-
-//单位米
-#define wide 0.1f
-#define dL 0.15f
-
 typedef struct{
 	float error[6];
 } Posdiff;

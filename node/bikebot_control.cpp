@@ -939,8 +939,8 @@ void setpoint(float x,float y,float z){
     angleV[1].q[2] = cbdata[5].v;
 
     //求正运动学，计算当前末端位置；求雅可比，计算当前末端速度
-    Kinematics(&angle[0],&p0[0],0);
-    Kinematics(&angle[1],&p0[1],1);
+    Kinematics_ref(&angle[0],&p0[0],0);
+    Kinematics_ref(&angle[1],&p0[1],1);
     v0[0].x = 0;
     v0[0].y = 0;
     v0[0].z = 0;
@@ -1003,8 +1003,8 @@ void setpoint1(float x,float y,float z){
     angleV[1].q[2] = cbdata[5].v;
 
     //求正运动学，计算当前末端位置；求雅可比，计算当前末端速度
-    Kinematics(&angle[0],&p0[0],0);
-    Kinematics(&angle[1],&p0[1],1);
+    Kinematics_ref(&angle[0],&p0[0],0);
+    Kinematics_ref(&angle[1],&p0[1],1);
     v0[0].x = 0;
     v0[0].y = 0;
     v0[0].z = 0;
