@@ -640,14 +640,14 @@ int main(int argc, char **argv)
 
     // reset_motors();
     //test
-    // cmd_transfer(2,&L_msgs[1],0.5,0,60,0.2,0);
-    // can0_tx(L_msgs[1].data,2);
+    // cmd_transfer(3,&L_msgs[2],69*PI/180.0,0,8,0.2,0);
+    // can0_tx(L_msgs[2].data,3);
 
     // legstate_update();
     // safety_det_begin = 1;
 
     // //腿初始化
-    // setpoint(0.16,0.08,-0.12); // 0.06 0.11 -0.26
+    // setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     // setpoint1(0.05,0.13,-0.34);//0.04
     // cout<<"leg init finished!"<<endl;
 
@@ -657,8 +657,8 @@ int main(int argc, char **argv)
     }
     printf("\r\n");
 
-    // //wait 1s
-    // sleep(1);
+    //wait 1s
+    sleep(1);
 
     // time_t tt = time(NULL);
     // strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
@@ -669,16 +669,16 @@ int main(int argc, char **argv)
 
     while(!shut_down){
 
-        reset_motors();
-        legstate_update();
-        for(int i=0;i<6;i++){
-            cb_Inf(leg_state.cbdata+i);
-        }
-        footPoint_pos_Inf();
-        printf("\r\n");
-
+        // reset_motors();
+        // legstate_update();
+        // for(int i=0;i<6;i++){
+        //     cb_Inf(leg_state.cbdata+i);
+        // }
+        // // footPoint_pos_Inf();
         // printf("\r\n");
-        sleep(1);
+
+        // // printf("\r\n");
+        // sleep(1);
         // Sleep_us(200000);
         // Sleep_us(20000);
     }
