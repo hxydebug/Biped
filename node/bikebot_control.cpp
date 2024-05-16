@@ -647,7 +647,7 @@ int main(int argc, char **argv)
     // safety_det_begin = 1;
 
     // //腿初始化
-    // setpoint(0.16,0.08,-0.12);
+    // setpoint(0.16,0.08,-0.12); // 0.06 0.11 -0.26
     // setpoint1(0.05,0.13,-0.34);//0.04
     // cout<<"leg init finished!"<<endl;
 
@@ -674,6 +674,7 @@ int main(int argc, char **argv)
         for(int i=0;i<6;i++){
             cb_Inf(leg_state.cbdata+i);
         }
+        footPoint_pos_Inf();
         printf("\r\n");
 
         // printf("\r\n");
@@ -920,6 +921,24 @@ void motor_cmd_write(Motor_cmd Mcmd){
     can1_tx(R_msgs[i].data,i+1+bias);
 }
 
+void footPoint_pos_Inf(){
+    CBData cbdata[6];
+    //获取当前关节位置
+    cb_trans(cbmsg,cbdata);
+    angle[0].q[0] = cbdata[0].p;
+    angle[0].q[1] = cbdata[1].p;
+    angle[0].q[2] = cbdata[2].p;
+    angle[1].q[0] = cbdata[3].p;
+    angle[1].q[1] = cbdata[4].p;
+    angle[1].q[2] = cbdata[5].p;
+    //求正运动学，计算当前末端位置
+    Kinematics_ref(&angle[0],&p0[0],0);
+    Kinematics_ref(&angle[1],&p0[1],1);
+    cout<<"left foot position: "<<p0[0].x<<","<<p0[0].y<<","<<p0[0].z<<endl;
+    cout<<"right foot position: "<<p0[1].x<<","<<p0[1].y<<","<<p0[1].z<<endl;
+
+}
+
 void setpoint(float x,float y,float z){
     /***  进行点位控制  ***/
     CBData cbdata[6];
@@ -969,9 +988,9 @@ void setpoint(float x,float y,float z){
     init_chabu(&pdes[1],&vdes[1],&p0[1],&v0[1],Iter,1);
     for(int j=0;j<Iter;j++){	
         chabu(&nextpos[0],j+1,0);
-        Inv_kinematics(&L_angle,&nextpos[0],0);
+        Inv_kinematics_ref(&L_angle,&nextpos[0],0);
         chabu(&nextpos[1],j+1,1);
-        Inv_kinematics(&R_angle,&nextpos[1],1);
+        Inv_kinematics_ref(&R_angle,&nextpos[1],1);
         for(int i=0;i<3;i++){
             cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,8,0.2,0);
             can0_tx(L_msgs[i].data,i+1);
@@ -1033,9 +1052,9 @@ void setpoint1(float x,float y,float z){
     init_chabu(&pdes[1],&vdes[1],&p0[1],&v0[1],Iter,1);
     for(int j=0;j<Iter;j++){	
         chabu(&nextpos[0],j+1,0);
-        Inv_kinematics(&L_angle,&nextpos[0],0);
+        Inv_kinematics_ref(&L_angle,&nextpos[0],0);
         chabu(&nextpos[1],j+1,1);
-        Inv_kinematics(&R_angle,&nextpos[1],1);
+        Inv_kinematics_ref(&R_angle,&nextpos[1],1);
         for(int i=0;i<3;i++){
             cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,20,0.2,0);
             can0_tx(L_msgs[i].data,i+1);

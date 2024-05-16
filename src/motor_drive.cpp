@@ -77,12 +77,15 @@ void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,f
         if(p < -150.0*PI/180.0) p = -150.0*PI/180.0;
         if(p > 150.0*PI/180.0) p = 150.0*PI/180.0;
     }
+
+    //return absolute angle by plus bias angle
+    int i = id - 1;
+    p += initial_angle_bias[i];
     
     //力矩限制
     if(t < -24.0) t = -24.0;
     if(t > 24.0) t = 24.0;
-    
-    if(id%3 == 0) p = p*rate;
+
     int p_int = float_to_uint(p,P_MIN,P_MAX,16);
     int v_int = float_to_uint(v, V_MIN, V_MAX, 12);
     int kp_int = float_to_uint(kp, KP_MIN, KP_MAX, 12);

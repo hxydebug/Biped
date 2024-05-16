@@ -48,5 +48,6 @@ void reset_motors();
 void setup_motors();
 void setpoint(float x,float y,float z);
 void setpoint1(float x,float y,float z);
+void footPoint_pos_Inf();
 
 #endif

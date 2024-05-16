@@ -55,7 +55,7 @@ void Kinematics(Angle *angle,Position *position,Leg leg){
     position->x = -L2*(cos(q1)*sin(q2) + cos(q2)*sin(q1)) - L1*sin(q1);
     position->y = L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)) + L1*cos(q1)*sin(q0);
     position->z = L0*sin(q0) - L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) - L1*cos(q0)*cos(q1);
-    position->y += width/2;
+    position->y += wid/2;
     position->x -= detx;
     position->z -= detz;
   }
@@ -63,7 +63,7 @@ void Kinematics(Angle *angle,Position *position,Leg leg){
     position->x = L2*(cos(q1)*sin(q2) + cos(q2)*sin(q1)) + L1*sin(q1);
     position->y = -L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)) + L1*cos(q1)*sin(q0);
     position->z = -L0*sin(q0) - L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) - L1*cos(q0)*cos(q1);
-    position->y -= width/2;
+    position->y -= wid/2;
     position->x -= detx;
     position->z -= detz;
   }
@@ -79,7 +79,7 @@ void Inv_kinematics(Angle *angle,Position *position,Leg leg){
   float L1 = Len1;
   float L2 = Len2;
   if(leg == fl){
-    y -= width/2;
+    y -= wid/2;
     x += detx;
     z += detz;
     x = -x;
@@ -93,7 +93,7 @@ void Inv_kinematics(Angle *angle,Position *position,Leg leg){
 	}
 	else{
 
-    y += width/2;
+    y += wid/2;
     x += detx;
     z += detz;
     x = -x;
