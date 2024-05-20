@@ -15,6 +15,7 @@ set(QPOASES_INLUDE_DIRS /usr/local/include/qpOASES)
 include_directories (${QPOASES_INLUDE_DIRS})
 include_directories (${EIGEN3_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES("/usr/include/python3.6m")
+INCLUDE_DIRECTORIES("~/openzen/include")
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -28,6 +29,16 @@ include_directories(
   ${catkin_INCLUDE_DIRS}
 )
 
+add_executable(OpenZenExampleCpp
+    src/openzen_test.cpp)
+
+target_link_libraries(OpenZenExampleCpp
+    OpenZen)
+
+target_compile_features(OpenZenExampleCpp
+    PRIVATE
+        cxx_std_11
+)
 
 add_executable(qptest 	src/qptest.cpp)
 target_link_libraries(qptest qpOASES)
@@ -63,5 +74,5 @@ target_link_libraries(motor_drive PUBLIC)
 target_include_directories(motor_drive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(Biped_control node/bikebot_control.cpp)
-target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control)
+target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control OpenZen)
 

@@ -31,13 +31,17 @@
 #include "bikebot_timer.h"
 #include <sys/timerfd.h>
 #include <signal.h>
+// imu
+#define OPENZEN_CXX14
+#include "OpenZen.h"
+#include <iostream>
 
 
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
 #include "gait_generator.h"
 
-
+using namespace zen;
 using namespace std;
 
 int socket0;
@@ -83,6 +87,9 @@ int can0_recieved = 0;
 int can1_recieved = 0;
 int safety_det_begin = 0;
 static int shut_down;
+
+// if imu start
+int imu_received = 0;
 
 //record
 int stance = 0;
@@ -192,108 +199,98 @@ void* Can1_thread(void* args)
 void* imu_thread(void* args)
 {
     cout << "imu_thread" << endl;
-    //定义线程局部变量
-    unsigned char buf[1]; //定义字符串长度
-    unsigned char Rxbuf[12];
-    unsigned char Rxcnt = 0;
 
-    struct SGyro
-    {
-        short w[3];
-        short T;
-    };
-    struct SAngle
-    {
-        short Angle[3];
-        short T;
-    };
-    struct SAcc
-    {
-        short a[3];
-        short T;
-    };
-    struct SGyro stcGyro;
-    struct SAngle stcAngle;
-    struct SAcc stcAcc;
+    // enable resonable log output for OpenZen
+    ZenSetLogLevel(ZenLogLevel_Info);
 
-    try{ 
-        //设置串口属性，并打开串口 
-        ser0.setPort("/dev/ttyTHS2"); 
-        ser0.setBaudrate(115200); 
-        serial::Timeout to = serial::Timeout::simpleTimeout(1000); 
-        ser0.setTimeout(to); 
-        ser0.open(); 
-    } 
-    catch (serial::IOException& e){ 
-        printf("Unable to open port ");  
-    } 
- 
-    if(ser0.isOpen()){ 
-        printf("Serial Port initialized\r\n"); 
-    } 
-    else{ 
-        printf("Serial Port initialize error"); 
-    } 
+    // create OpenZen Clien
+    auto clientPair = make_client();
+    auto& clientError = clientPair.first;
+    auto& client = clientPair.second;
 
+    if (clientError) {
+        std::cout << "Cannot create OpenZen client" << std::endl;
+        return NULL;
+    }
+
+    // connect to sensor on IO System by the sensor name
+    auto sensorPair = client.obtainSensorByName("Bluetooth", "00:04:3E:6F:38:05");
+    auto& obtainError = sensorPair.first;
+    auto& sensor = sensorPair.second;
+    if (obtainError)
+    {
+        std::cout << "Cannot connect to sensor" << std::endl;
+        client.close();
+        return NULL;
+    }
+
+    // check that the sensor has an IMU component
+    auto imuPair = sensor.getAnyComponentOfType(g_zenSensorType_Imu);
+    auto& hasImu = imuPair.first;
+    auto imu = imuPair.second;
+
+    if (!hasImu)
+    {
+        std::cout << "Connected sensor has no IMU" << std::endl;
+        client.close();
+        return NULL;
+    }
+
+    // set and get current streaming frequency
+    auto error = imu.setInt32Property(ZenImuProperty_SamplingRate, 100);
+    if (error) {
+        std::cout << "Error setting streaming frequency" << std::endl;
+        client.close();
+        return NULL;
+    }
+
+    auto freqPair = imu.getInt32Property(ZenImuProperty_SamplingRate);
+    if (freqPair.first) {
+        std::cout << "Error fetching streaming frequency" << std::endl;
+        client.close();
+        return NULL;
+    }
+    std::cout << "Streaming frequency: " << freqPair.second << std::endl;
+
+    // toggle on/off of a particular data output (linAcc is not ON by default)
+    error = imu.setBoolProperty(ZenImuProperty_OutputLinearAcc, true);
+    if (error) {
+        std::cout << "Error toggling ON linear acc data output" << std::endl;
+        client.close();
+        return NULL;
+    }
+
+    // float _lastRuntime = 0;
+    // float _maxRuntime = 0;
+    // Timer t;
     while(!shut_down)
     {
-        //读串口数据
-        Rxbuf[Rxcnt++] = buf[0];
-        if(Rxbuf[0] != 0x55){ //数据头不对
-            Rxcnt = 0;
-            try{
-                ser0.read(buf, sizeof(buf));
-            }
-            catch (exception& e){
-                cout << "imu_sp1" << endl;
-            } 
-            continue;
-        }
-        if(Rxcnt < 11){ //数据不满11个
-            try{
-                ser0.read(buf, sizeof(buf)); 
-            }
-            catch (exception& e){
-                cout << "imu_sp2" << endl;
-            } 
-            continue;
-        }
-        else{
-            switch(Rxbuf[1])
-            {
-                case 0x51:
-                    // g
-                    memcpy(&stcAcc,&Rxbuf[2],8);
-                    acc[0] = (double)stcAcc.a[0]/32768*4;
-                    acc[1] = (double)stcAcc.a[1]/32768*4;
-                    acc[2] = (double)stcAcc.a[2]/32768*4;
-                    break;
+        // t.start();
+        auto event = client.waitForNextEvent();
+        if (event.second.component.handle == imu.component().handle) {
+            // std::cout << "> Lin Acceleration: \t x = " << event.second.data.imuData.linAcc[0]
+            //     << "\t y = " << event.second.data.imuData.linAcc[1]
+            //     << "\t z = " << event.second.data.imuData.linAcc[2] << std::endl;
 
-                case 0x52:
-                    // rad/s
-                    memcpy(&stcGyro,&Rxbuf[2],8);
-                    dvarphi = (double)stcGyro.w[0]*8.725/32768;
-                    dpitch = (double)stcGyro.w[1]*8.725/32768;
-                    dpsi = (double)stcGyro.w[2]*8.725/32768;
-                    break;
+            // // depending on sensor, gyro data is outputted to g1, g2 or both
+            // // read more on https://lpresearch.bitbucket.io/openzen/latest/getting_started.html#id1
+            // std::cout << "> Raw Gyro 1: \t\t x = " << event.second.data.imuData.g1Raw[0]
+            //     << "\t y = " << event.second.data.imuData.g1Raw[1]
+            //     << "\t z = " << event.second.data.imuData.g1Raw[2] << std::endl;
+            
+            // std::cout << "> RPY: \t\t x = " << event.second.data.imuData.r[0]
+            //     << "\t y = " << event.second.data.imuData.r[1]
+            //     << "\t z = " << event.second.data.imuData.r[2] << std::endl;
                 
-                case 0x53:
-                    // rad
-                    memcpy(&stcAngle,&Rxbuf[2],8);
-                    varphi = (double)stcAngle.Angle[0]/32768*PI;
-                    pitch = (double)stcAngle.Angle[1]/32768*PI;
-                    psi = (double)stcAngle.Angle[2]/32768*PI;
-                    break;
-            }
-            Rxcnt = 0;//清空缓存区
-
-            try{
-                ser0.read(buf, sizeof(buf));
-            }
-            catch (exception& e){
-                cout << "imu_sp" << endl;
-            }     
+            // std::cout << "> Quat: \t\t w = " << event.second.data.imuData.q[0]
+            //     << "\t x = " << event.second.data.imuData.q[1]
+            //     << "\t y = " << event.second.data.imuData.q[2]
+            //     << "\t z = " << event.second.data.imuData.q[3] << std::endl;
         }
+        imu_received = 1;
+        // _lastRuntime = (float)t.getSeconds();
+        // _maxRuntime = std::max(_maxRuntime, _lastRuntime);
+        // cout<<"maxRuntime:"<<_maxRuntime<<endl;
     }
     return NULL;
 }
@@ -332,53 +329,53 @@ void* safety_thread(void* args)
         t.start();
 
         //angle_limit
-        if(leg_state.cbdata[0].p < -90.0*PI/180.0 || leg_state.cbdata[0].p > 30.0*PI/180.0) {
+        if(leg_state.cbdata[0].p < -30.0*PI/180.0 || leg_state.cbdata[0].p > 60.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle0 error"<<endl;
                 print_flag = 0;
             }  
-            // shut_down = 1;
+            shut_down = 1;
         }
-        if(leg_state.cbdata[1].p < -30.0*PI/180.0 || leg_state.cbdata[1].p > 180.0*PI/180.0) {
+        if(leg_state.cbdata[1].p < -100.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle1 error"<<endl;
                 print_flag = 0;
             } 
-            // shut_down = 1;
+            shut_down = 1;
         }
-        if(leg_state.cbdata[2].p > 30.0*PI/180.0) {
+        if(leg_state.cbdata[2].p < 35.0*PI/180.0 || leg_state.cbdata[2].p > 150.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle2 error"<<endl;
                 print_flag = 0;
             } 
-            // shut_down = 1;
+            shut_down = 1;
         }
-        if(leg_state.cbdata[3].p < -30.0*PI/180.0 || leg_state.cbdata[3].p > 90.0*PI/180.0) {
+        if(leg_state.cbdata[3].p < -60.0*PI/180.0 || leg_state.cbdata[3].p > 30.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle3 error"<<endl;
                 print_flag = 0;
             } 
-            // shut_down = 1;
+            shut_down = 1;
         }
-        if(leg_state.cbdata[4].p < -180.0*PI/180.0 || leg_state.cbdata[4].p > 30.0*PI/180.0) {
+        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 100.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle4 error"<<endl;
                 print_flag = 0;
             } 
-            // shut_down = 1;
+            shut_down = 1;
         }
-        if(leg_state.cbdata[5].p < -30.0*PI/180.0) {
+        if(leg_state.cbdata[2].p < -150.0*PI/180.0 || leg_state.cbdata[2].p > -35.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle5 error"<<endl;
                 print_flag = 0;
             } 
-            // shut_down = 1;
+            shut_down = 1;
         }
         //torque_limit
         for(int i(0);i<6;i++){
@@ -388,7 +385,7 @@ void* safety_thread(void* args)
                     cout<<"error: torque"<<i<<endl;
                     print_flag = 0;
                 } 
-                // shut_down = 1;
+                shut_down = 1;
             }
         }
 
@@ -635,7 +632,10 @@ int main(int argc, char **argv)
 
     //判断leg硬件是否就绪
     while(can0_recieved == 0 || can1_recieved == 0);
+    //infer if imu is ready
+    while(imu_received == 0);
 
+    cout << "Hardware is Ready!" << endl;
     sleep(1);
 
     // reset_motors();
@@ -700,36 +700,36 @@ void thread_setup(void){
     pthread_t tids[4];
     int ret;
 
-    // struct sched_param param;
-    // pthread_attr_t attr;
+    struct sched_param param;
+    pthread_attr_t attr;
 
-    // /* Initialize pthread attributes (default values) */
-    // ret = pthread_attr_init(&attr);
-    // if (ret) {
-    //         printf("init pthread attributes failed\n");
-    // }
-    // /* Set a specific stack size  */
-    // ret = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
-    // if (ret) {
-    //     printf("pthread setstacksize failed\n");
-    // }
-    // /* Set scheduler policy and priority of pthread */
-    // ret = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
-    // if (ret) {
-    //         printf("pthread setschedpolicy failed\n");
-    // }
-    // param.sched_priority = 49;
-    // ret = pthread_attr_setschedparam(&attr, &param);
-    // if (ret) {
-    //         printf("pthread setschedparam failed\n");
-    // }
-    // // /* Use scheduling parameters of attr */
-    // ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
-    // if (ret) {
-    //         printf("pthread setinheritsched failed\n");
-    // }
-    // pthread_attr_getschedparam(&attr, &param);
-    // cout<<"can_thread prior:"<<param.sched_priority<<endl;
+    /* Initialize pthread attributes (default values) */
+    ret = pthread_attr_init(&attr);
+    if (ret) {
+            printf("init pthread attributes failed\n");
+    }
+    /* Set a specific stack size  */
+    ret = pthread_attr_setstacksize(&attr, PTHREAD_STACK_MIN);
+    if (ret) {
+        printf("pthread setstacksize failed\n");
+    }
+    /* Set scheduler policy and priority of pthread */
+    ret = pthread_attr_setschedpolicy(&attr, SCHED_FIFO);
+    if (ret) {
+            printf("pthread setschedpolicy failed\n");
+    }
+    param.sched_priority = 49;
+    ret = pthread_attr_setschedparam(&attr, &param);
+    if (ret) {
+            printf("pthread setschedparam failed\n");
+    }
+    // /* Use scheduling parameters of attr */
+    ret = pthread_attr_setinheritsched(&attr, PTHREAD_EXPLICIT_SCHED);
+    if (ret) {
+            printf("pthread setinheritsched failed\n");
+    }
+    pthread_attr_getschedparam(&attr, &param);
+    cout<<"can_thread prior:"<<param.sched_priority<<endl;
     //参数依次是：创建的线程id，线程参数，调用的函数，传入的函数参数
     ret = pthread_create(&tids[0], NULL, Can0_thread, NULL);
     if (ret != 0){
@@ -741,10 +741,10 @@ void thread_setup(void){
         cout << "pthread_create1 error: error_code=" << ret << endl;
     }
 
-    // ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
-    // if (ret != 0){
-    //     cout << "pthread_create2 error: error_code=" << ret << endl;
-    // }
+    ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create2 error: error_code=" << ret << endl;
+    }
 
     // ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
     // if (ret != 0){
