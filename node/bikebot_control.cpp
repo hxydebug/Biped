@@ -61,7 +61,7 @@ Position nextpos[2];
 Angle nextangle[2];
 Angle L_angle;
 Angle R_angle;
-int Iter = 400;//设置2000ms
+int Iter = 500;//设置2000ms
 
 //共享全局变量
 //leg_data
@@ -329,7 +329,7 @@ void* safety_thread(void* args)
         t.start();
 
         //angle_limit
-        if(leg_state.cbdata[0].p < -30.0*PI/180.0 || leg_state.cbdata[0].p > 60.0*PI/180.0) {
+        if(leg_state.cbdata[0].p < -50.0*PI/180.0 || leg_state.cbdata[0].p > 60.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle0 error"<<endl;
@@ -353,7 +353,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[3].p < -60.0*PI/180.0 || leg_state.cbdata[3].p > 30.0*PI/180.0) {
+        if(leg_state.cbdata[3].p < -60.0*PI/180.0 || leg_state.cbdata[3].p > 50.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle3 error"<<endl;
@@ -369,7 +369,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[2].p < -150.0*PI/180.0 || leg_state.cbdata[2].p > -35.0*PI/180.0) {
+        if(leg_state.cbdata[5].p < -150.0*PI/180.0 || leg_state.cbdata[5].p > -35.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle5 error"<<endl;
@@ -633,7 +633,7 @@ int main(int argc, char **argv)
     //判断leg硬件是否就绪
     while(can0_recieved == 0 || can1_recieved == 0);
     //infer if imu is ready
-    while(imu_received == 0);
+    // while(imu_received == 0);
 
     cout << "Hardware is Ready!" << endl;
     sleep(1);
@@ -643,12 +643,13 @@ int main(int argc, char **argv)
     // cmd_transfer(3,&L_msgs[2],69*PI/180.0,0,8,0.2,0);
     // can0_tx(L_msgs[2].data,3);
 
-    // legstate_update();
-    // safety_det_begin = 1;
+    legstate_update();
+    safety_det_begin = 1;
 
     // //腿初始化
     // setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
-    // setpoint1(0.05,0.13,-0.34);//0.04
+    // cout<<"first step"<<endl;
+    // setpoint1(0.06,0.11,-0.32);//0.04
     // cout<<"leg init finished!"<<endl;
 
     legstate_update();
@@ -669,16 +670,16 @@ int main(int argc, char **argv)
 
     while(!shut_down){
 
-        // reset_motors();
-        // legstate_update();
-        // for(int i=0;i<6;i++){
-        //     cb_Inf(leg_state.cbdata+i);
-        // }
-        // // footPoint_pos_Inf();
-        // printf("\r\n");
+        reset_motors();
+        legstate_update();
+        for(int i=0;i<6;i++){
+            cb_Inf(leg_state.cbdata+i);
+        }
+        // footPoint_pos_Inf();
+        printf("\r\n");
 
         // // printf("\r\n");
-        // sleep(1);
+        sleep(1);
         // Sleep_us(200000);
         // Sleep_us(20000);
     }
@@ -746,10 +747,10 @@ void thread_setup(void){
         cout << "pthread_create2 error: error_code=" << ret << endl;
     }
 
-    // ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
-    // if (ret != 0){
-    //     cout << "pthread_create3 error: error_code=" << ret << endl;
-    // }
+    ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create3 error: error_code=" << ret << endl;
+    }
 
 }
 
@@ -996,7 +997,7 @@ void setpoint(float x,float y,float z){
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,8,0.2,0);
             can1_tx(R_msgs[i].data,i+1+bias);
-            Sleep_us(300);
+            Sleep_us(600);
         }
         // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
         //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
@@ -1060,7 +1061,7 @@ void setpoint1(float x,float y,float z){
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,20,0.2,0);
             can1_tx(R_msgs[i].data,i+1+bias);
-            Sleep_us(300);
+            Sleep_us(600);
         }
         // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
         //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
