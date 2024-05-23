@@ -647,10 +647,10 @@ int main(int argc, char **argv)
     safety_det_begin = 1;
 
     // //腿初始化
-    // setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
-    // cout<<"first step"<<endl;
-    // setpoint1(0.06,0.11,-0.32);//0.04
-    // cout<<"leg init finished!"<<endl;
+    setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
+    cout<<"first step"<<endl;
+    setpoint1(0.06,0.11,-0.32);//0.04
+    cout<<"leg init finished!"<<endl;
 
     legstate_update();
     for(int i=0;i<6;i++){
@@ -670,16 +670,16 @@ int main(int argc, char **argv)
 
     while(!shut_down){
 
-        reset_motors();
-        legstate_update();
-        for(int i=0;i<6;i++){
-            cb_Inf(leg_state.cbdata+i);
-        }
-        // footPoint_pos_Inf();
-        printf("\r\n");
+        // reset_motors();
+        // legstate_update();
+        // for(int i=0;i<6;i++){
+        //     cb_Inf(leg_state.cbdata+i);
+        // }
+        // // footPoint_pos_Inf();
+        // printf("\r\n");
 
-        // // printf("\r\n");
-        sleep(1);
+        // // // printf("\r\n");
+        // sleep(1);
         // Sleep_us(200000);
         // Sleep_us(20000);
     }
@@ -997,10 +997,10 @@ void setpoint(float x,float y,float z){
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,8,0.2,0);
             can1_tx(R_msgs[i].data,i+1+bias);
-            Sleep_us(600);
+            Sleep_us(300);
         }
-        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
+            <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
     }
 }
 
@@ -1061,10 +1061,10 @@ void setpoint1(float x,float y,float z){
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,20,0.2,0);
             can1_tx(R_msgs[i].data,i+1+bias);
-            Sleep_us(600);
+            Sleep_us(300);
         }
-        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
+            <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
     }
 }
 
