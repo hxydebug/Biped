@@ -22,11 +22,11 @@ typedef struct{
 //定义leg_state结构体
 typedef struct{
     CBData cbdata[6];
-    float varphi;
-    float dvarphi;
-    float accx;
-    float optmT;
-    float body_v;
+    float rpy[3];
+    float omega[3];
+    float acc[3];
+    float com_velocity[3];
+    float com_height;
 }  Leg_state;
 
 //定义leg_cmd结构体

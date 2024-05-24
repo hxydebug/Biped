@@ -67,8 +67,9 @@ int Iter = 500;//设置2000ms
 //leg_data
 CANMessage cbmsg[6];
 //imu_data
-double varphi, dvarphi, psi, pitch, dpitch, dpsi;
-double acc[3];
+float rpy[3];
+float acc[3];
+float omega[3];
 
 //全局变量
 Leg_state leg_state;
@@ -268,6 +269,10 @@ void* imu_thread(void* args)
         // t.start();
         auto event = client.waitForNextEvent();
         if (event.second.component.handle == imu.component().handle) {
+
+            acc = event.second.data.imuData.linAcc;
+            omega = event.second.data.imuData.g1Raw;
+            rpy = event.second.data.imuData.r;
             // std::cout << "> Lin Acceleration: \t x = " << event.second.data.imuData.linAcc[0]
             //     << "\t y = " << event.second.data.imuData.linAcc[1]
             //     << "\t z = " << event.second.data.imuData.linAcc[2] << std::endl;
@@ -282,10 +287,6 @@ void* imu_thread(void* args)
             //     << "\t y = " << event.second.data.imuData.r[1]
             //     << "\t z = " << event.second.data.imuData.r[2] << std::endl;
                 
-            // std::cout << "> Quat: \t\t w = " << event.second.data.imuData.q[0]
-            //     << "\t x = " << event.second.data.imuData.q[1]
-            //     << "\t y = " << event.second.data.imuData.q[2]
-            //     << "\t z = " << event.second.data.imuData.q[3] << std::endl;
         }
         imu_received = 1;
         // _lastRuntime = (float)t.getSeconds();
@@ -554,7 +555,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hxy/0112/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0520/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -661,8 +662,8 @@ int main(int argc, char **argv)
     //wait 1s
     sleep(1);
 
-    // time_t tt = time(NULL);
-    // strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
+    time_t tt = time(NULL);
+    strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
 
     // control_threadcreate();    
 
@@ -816,10 +817,9 @@ void control_threadcreate(void){
 
 void legstate_update(){
     cb_trans(cbmsg,leg_state.cbdata);
-    leg_state.varphi = varphi;
-    leg_state.dvarphi = dvarphi;
-    leg_state.accx = acc[0];
-    leg_state.body_v = body_v;
+    leg_state.rpy = rpy;
+    leg_state.omega = omega;
+    leg_state.acc = acc;
 }
 
 void CAN_init(){

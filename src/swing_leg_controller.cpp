@@ -59,7 +59,8 @@ void swing_leg_controller::update(float current_time){
 Eigen::VectorXd swing_leg_controller::get_action(void){
 
   Eigen::VectorXd com_velocity(3);
-  com_velocity << licycle->body_v,0,0;
+  com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
+  Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
 
   Eigen::VectorXd nowang(6);
   Eigen::VectorXd nowangV(6);
@@ -91,11 +92,14 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
       Eigen::VectorXd foot_target_position1 = (-hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 + _KP*
                                   (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
                                   + hip_positions[i];
+
+      // from world to body frame
+      Eigen::VectorXd foot_target_postion_b = com_rotm.transpose()*foot_target_position1;
       
       Position end_position1;
-      end_position1.x = foot_target_position1[0];
-      end_position1.y = foot_target_position1[1];
-      end_position1.z = foot_target_position1[2];
+      end_position1.x = foot_target_position_b[0];
+      end_position1.y = foot_target_position_b[1];
+      end_position1.z = foot_target_position_b[2];
 
       Position foot_position1 = get_swing_foot_trajectory1(_gait_generator->normalized_phase[i],phase_switch_foot_local_position1[i],end_position1);
       postarget[i] = foot_position1;
@@ -124,10 +128,14 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
                                   + hip_positions[i];
       // foot_target_position[0]=0.2;
       // std::cout<<foot_target_position[0]<<std::endl;
+
+      // from world to body frame
+      Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position;
+
       Position end_position;
-      end_position.x = foot_target_position[0];
-      end_position.y = foot_target_position[1];
-      end_position.z = foot_target_position[2];
+      end_position.x = foot_target_position_b[0];
+      end_position.y = foot_target_position_b[1];
+      end_position.z = foot_target_position_b[2];
 
       Position foot_position = get_swing_foot_trajectory(_gait_generator->normalized_phase[i],phase_switch_foot_local_position[i],end_position);
       postarget[i] = foot_position;
