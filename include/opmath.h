@@ -9,5 +9,5 @@
 
 //math tool
 Eigen::Matrix3d rpy2romatrix(double roll,double pitch,double yaw);
-
+Eigen::AngleAxisd romatrix2AngleAxis(Eigen::Matrix3d rotation_matrix);
 #endif

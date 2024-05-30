@@ -62,14 +62,21 @@ Angle nextangle[2];
 Angle L_angle;
 Angle R_angle;
 int Iter = 500;//设置2000ms
+pthread_t tids1[4];
+pthread_t tids2[4];
 
 //共享全局变量
 //leg_data
 CANMessage cbmsg[6];
-//imu_data
-float rpy[3];
-float acc[3];
-float omega[3];
+//state estimator
+float esti_com_velocity[3] = {0.0,0.0,0.0};
+float esti_com_height;
+//command
+Eigen::VectorXd user_cmd;
+
+// 互斥锁
+//leg_state
+mutex legState_m;
 
 //全局变量
 Leg_state leg_state;
@@ -269,19 +276,21 @@ void* imu_thread(void* args)
         // t.start();
         auto event = client.waitForNextEvent();
         if (event.second.component.handle == imu.component().handle) {
-
-            acc = event.second.data.imuData.linAcc;
-            omega = event.second.data.imuData.g1Raw;
-            rpy = event.second.data.imuData.r;
+            for(int i(0); i < 3; i++){
+                leg_state.acc[i] = event.second.data.imuData.linAcc[i]*9.81;// g to m/s^2
+                leg_state.omega[i] = event.second.data.imuData.w[i]*PI/180.0;// degree/s to rad/s
+                leg_state.rpy[i] = event.second.data.imuData.r[i]*PI/180.0;// degree to rad
+            }
+            
             // std::cout << "> Lin Acceleration: \t x = " << event.second.data.imuData.linAcc[0]
             //     << "\t y = " << event.second.data.imuData.linAcc[1]
             //     << "\t z = " << event.second.data.imuData.linAcc[2] << std::endl;
 
             // // depending on sensor, gyro data is outputted to g1, g2 or both
             // // read more on https://lpresearch.bitbucket.io/openzen/latest/getting_started.html#id1
-            // std::cout << "> Raw Gyro 1: \t\t x = " << event.second.data.imuData.g1Raw[0]
-            //     << "\t y = " << event.second.data.imuData.g1Raw[1]
-            //     << "\t z = " << event.second.data.imuData.g1Raw[2] << std::endl;
+            // std::cout << "> Raw Gyro 1: \t\t x = " << event.second.data.imuData.w[0]
+            //     << "\t y = " << event.second.data.imuData.w[1]
+            //     << "\t z = " << event.second.data.imuData.w[2] << std::endl;
             
             // std::cout << "> RPY: \t\t x = " << event.second.data.imuData.r[0]
             //     << "\t y = " << event.second.data.imuData.r[1]
@@ -442,7 +451,7 @@ void* compute_foot_grf_thread(void* args)
         float desire_v = 0.5;//0.8
         stc.desired_xspeed = desire_v;
         //calculate grf  500HZ
-        stc_tau = stc.get_action();
+        stc_tau = stc.get_action(user_cmd);
 
 
         /********************** running end **********************/
@@ -506,7 +515,7 @@ void* legcontrol_thread(void* args)
         //0 initial
         //1 pd+force
 
-        l_controller.get_action(&leg_cmd,1,stc_tau);
+        l_controller.get_action(&leg_cmd,1,stc_tau,user_cmd);
         stance = gait_gen.leg_state[0];
         l_leg_p = swc.postarget[0];
         r_leg_p = swc.postarget[1];
@@ -548,14 +557,110 @@ void* legcontrol_thread(void* args)
     return NULL;
 }
 
+//estimator_thread
+void* estimator_thread(void* args)
+{
+
+    cout<<"state estimator start!"<<endl;
+
+    //variables
+    float timestep_length = 0.002;
+    float esti_timer = 0;
+
+    //初始化定时器
+    float _period = timestep_length;
+    auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
+    int seconds = (int)_period;
+    int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
+    Timer t;
+    itimerspec timerSpec;
+    timerSpec.it_interval.tv_sec = seconds;
+    timerSpec.it_value.tv_sec = seconds;
+    timerSpec.it_value.tv_nsec = nanoseconds;
+    timerSpec.it_interval.tv_nsec = nanoseconds;
+    timerfd_settime(timerFd, 0, &timerSpec, nullptr);
+    unsigned long long missed = 0;
+    float _lastRuntime = 0;
+    float _lastPeriodTime = 0;
+    float _maxPeriod = 0;
+    float _maxRuntime = 0;
+
+    while(!shut_down)
+    {
+        //计时
+        _lastPeriodTime = (float)t.getSeconds();
+        t.start();
+
+        /********************** running begin **********************/
+        // legstate_update();
+        Eigen::Matrix3d com_rotm = rpy2romatrix(leg_state.rpy[0],leg_state.rpy[1],leg_state.rpy[2]);
+
+        //accumulate acc
+        Eigen::VectorXd Body_acc;
+        Body_acc.resize(3);
+        Body_acc << leg_state.acc[0],leg_state.acc[1],leg_state.acc[2];
+        Eigen::VectorXd World_acc = com_rotm*Body_acc;
+        for(int i=0;i<3;i++){
+            esti_com_velocity[i] += World_acc[i]*timestep_length;
+            leg_state.com_velocity[i] = esti_com_velocity[i];
+        }
+        
+        //estimate height
+        Eigen::VectorXd nowang(6);
+        for(int i(0);i<6;i++){
+            nowang[i] = leg_state.cbdata[i].p;
+        }
+        if(gait_gen.leg_state[0] == 1){
+            Position posxyz = getFootPositionInBaswFrame(nowang,0);
+            Eigen::VectorXd pos_vector(3);
+            pos_vector[0] = posxyz.x;
+            pos_vector[1] = posxyz.y;
+            pos_vector[2] = posxyz.z;
+            Eigen::VectorXd pos_world = com_rotm*pos_vector;
+            esti_com_height = -pos_world[2];
+        }
+        else{
+            Position posxyz = getFootPositionInBaswFrame(nowang,1);
+            Eigen::VectorXd pos_vector(3);
+            pos_vector[0] = posxyz.x;
+            pos_vector[1] = posxyz.y;
+            pos_vector[2] = posxyz.z;
+            Eigen::VectorXd pos_world = com_rotm*pos_vector;
+            esti_com_height = -pos_world[2];
+        }
+        leg_state.com_height = esti_com_height;
+
+        esti_timer += timestep_length;
+        /********************** running end **********************/
+
+        _lastRuntime = (float)t.getSeconds();
+        // cout<<"lastPeriodTime:"<<_lastPeriodTime<<endl;
+        _maxPeriod = std::max(_maxPeriod, _lastPeriodTime);
+        _maxRuntime = std::max(_maxRuntime, _lastRuntime);
+        Max_p = _maxPeriod;
+        Max_r = _maxRuntime;
+        // cout<<"maxPeriod:"<<_maxPeriod<<endl;
+        // cout<<"maxRuntime:"<<_maxRuntime<<endl;
+        // cout<<"Runtime:"<<_lastRuntime<<endl;
+
+        // cout<<leg_state.varphi/ PI * 180.0<<endl;
+        
+        /// 延时
+        int m = read(timerFd, &missed, sizeof(missed));
+        (void)m;
+
+    }
+    return NULL;
+}
+
 //record_thread
 void* record_thread(void* args)
 {
-    cout << "record_thread" << endl;
+    cout << "record_thread start!" << endl;
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0520/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0530/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -593,13 +698,18 @@ void* record_thread(void* args)
                 << leg_state.cbdata[3].v << ", " << leg_state.cbdata[4].v << ", " << leg_state.cbdata[5].v << ", "
                 << leg_state.cbdata[0].t << ", " << leg_state.cbdata[1].t << ", " << leg_state.cbdata[2].t << ", " 
                 << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
-                << leg_state.varphi << ", "<< poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
+                << poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
                 << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << leg_state.dvarphi << ", "<< leg_state.accx << ", "<< stance << ", "<< Max_p << ", "<< Max_r << ", "
+                << stance << ", "<< Max_p << ", "<< Max_r << ", "
                 << l_leg_p.x << ", "<< l_leg_p.y << ", "<< l_leg_p.z << ", "
                 << r_leg_p.x << ", "<< r_leg_p.y << ", "<< r_leg_p.z << ", "
                 << stc_tau[0] << ", "<< stc_tau[1] << ", "<< stc_tau[2] << ", "
-                << stc_tau[3] << ", "<< stc_tau[4] << ", "<< stc_tau[5]
+                << stc_tau[3] << ", "<< stc_tau[4] << ", "<< stc_tau[5] << ", "
+                << leg_state.rpy[0] << ", "<< leg_state.rpy[1] << ", "<< leg_state.rpy[2] << ", "
+                << leg_state.com_velocity[0] << ", "<< leg_state.com_velocity[1] << ", "<< leg_state.com_velocity[2] << ", "
+                << leg_state.com_height << ", "
+                << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
+                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] 
                 << std::endl;
 
 
@@ -620,7 +730,11 @@ void* record_thread(void* args)
 int main(int argc, char **argv)
 {
     cout << "main_thread" << endl;
+
+    // initial variables
     stc_tau.setConstant(0);
+    user_cmd.resize(4);
+    user_cmd << 0,0,0.45,0;   //vx,vy,height,dyaw
 
     //初始化can0，can1
     CAN_init();
@@ -634,7 +748,7 @@ int main(int argc, char **argv)
     //判断leg硬件是否就绪
     while(can0_recieved == 0 || can1_recieved == 0);
     //infer if imu is ready
-    // while(imu_received == 0);
+    while(imu_received == 0);
 
     cout << "Hardware is Ready!" << endl;
     sleep(1);
@@ -665,7 +779,7 @@ int main(int argc, char **argv)
     time_t tt = time(NULL);
     strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
 
-    // control_threadcreate();    
+    control_threadcreate();    
 
     signal(SIGINT, sighand);
 
@@ -689,9 +803,12 @@ int main(int argc, char **argv)
     cout<<"done!"<<endl;
 
     /* Join the thread and wait until it is done */
-    // pthread_t thread;
-    // int ret = pthread_join(thread, NULL);
-    // if (ret)  printf("join pthread failed: %m\n");
+    for (int i(0); i < 4; i ++){
+        int ret = pthread_join(tids1[i], NULL);
+        if (ret)  printf("join pthread1 failed\n");
+        ret = pthread_join(tids2[i], NULL);
+        if (ret)  printf("join pthread2 failed\n");
+    }
 
     return 0;
 
@@ -699,7 +816,6 @@ int main(int argc, char **argv)
 
 void thread_setup(void){
     //定义线程的 id 变量，多个变量使用数组
-    pthread_t tids[4];
     int ret;
 
     struct sched_param param;
@@ -733,22 +849,22 @@ void thread_setup(void){
     pthread_attr_getschedparam(&attr, &param);
     cout<<"can_thread prior:"<<param.sched_priority<<endl;
     //参数依次是：创建的线程id，线程参数，调用的函数，传入的函数参数
-    ret = pthread_create(&tids[0], NULL, Can0_thread, NULL);
+    ret = pthread_create(&tids1[0], &attr, Can0_thread, NULL);
     if (ret != 0){
         cout << "pthread_create0 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids[1], NULL, Can1_thread, NULL);
+    ret = pthread_create(&tids1[1], &attr, Can1_thread, NULL);
     if (ret != 0){
         cout << "pthread_create1 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids[2], NULL, imu_thread, NULL);
+    ret = pthread_create(&tids1[2], NULL, imu_thread, NULL);
     if (ret != 0){
         cout << "pthread_create2 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids[3], NULL, safety_thread, NULL);
+    ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
     if (ret != 0){
         cout << "pthread_create3 error: error_code=" << ret << endl;
     }
@@ -758,7 +874,6 @@ void thread_setup(void){
 void control_threadcreate(void){
     struct sched_param param;
     pthread_attr_t attr;
-    pthread_t tids[3];
 
     /* Lock memory */
     if(mlockall(MCL_CURRENT|MCL_FUTURE) == -1) {
@@ -791,35 +906,43 @@ void control_threadcreate(void){
     }
     pthread_attr_getschedparam(&attr, &param);
     cout<<"compute_grf_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids[0], &attr, compute_foot_grf_thread, NULL);
+    ret = pthread_create(&tids2[0], &attr, compute_foot_grf_thread, NULL);
     if (ret != 0){
-        cout << "grf_pthread_create1 error: error_code=" << ret << endl;
+        cout << "grf_pthread error: error_code=" << ret << endl;
     }
 
     param.sched_priority = 99;
     ret = pthread_attr_setschedparam(&attr, &param);
     pthread_attr_getschedparam(&attr, &param);
     cout<<"legc_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids[1], &attr, legcontrol_thread, NULL);
+    ret = pthread_create(&tids2[1], &attr, legcontrol_thread, NULL);
     if (ret != 0){
-        cout << "ctr_pthread_create1 error: error_code=" << ret << endl;
+        cout << "ctr_pthread error: error_code=" << ret << endl;
+    }
+
+    param.sched_priority = 99;
+    ret = pthread_attr_setschedparam(&attr, &param);
+    pthread_attr_getschedparam(&attr, &param);
+    cout<<"estimator_thread prior:"<<param.sched_priority<<endl;
+    ret = pthread_create(&tids2[2], &attr, estimator_thread, NULL);
+    if (ret != 0){
+        cout << "estimate_pthread error: error_code=" << ret << endl;
     }
 
     param.sched_priority = 48;
     ret = pthread_attr_setschedparam(&attr, &param);
     pthread_attr_getschedparam(&attr, &param);
     cout<<"record_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids[2], &attr, record_thread, NULL);
+    ret = pthread_create(&tids2[3], &attr, record_thread, NULL);
     if (ret != 0){
         cout << "record_pthread error: error_code=" << ret << endl;
     }
 }
 
 void legstate_update(){
+    legState_m.lock();
     cb_trans(cbmsg,leg_state.cbdata);
-    leg_state.rpy = rpy;
-    leg_state.omega = omega;
-    leg_state.acc = acc;
+    legState_m.unlock();
 }
 
 void CAN_init(){
@@ -999,8 +1122,8 @@ void setpoint(float x,float y,float z){
             can1_tx(R_msgs[i].data,i+1+bias);
             Sleep_us(300);
         }
-        cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-            <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
+        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
     }
 }
 
@@ -1063,8 +1186,8 @@ void setpoint1(float x,float y,float z){
             can1_tx(R_msgs[i].data,i+1+bias);
             Sleep_us(300);
         }
-        cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-            <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
+        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
     }
 }
 

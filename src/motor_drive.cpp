@@ -30,9 +30,7 @@ void cb_transfer(CANMessage msg,CBData *cb){
 void cb_trans(CANMessage *msg,CBData *cb){
 		for(int i=0;i<6;i++){
 			cb_transfer(msg[i],cb + i);
-		}
-        for(int i=0;i<6;i++){
-			cb[i].p += -initial_angle_bias[i];
+            cb[i].p += -initial_angle_bias[i];
 		}
 		
 }

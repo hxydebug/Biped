@@ -38,8 +38,8 @@ leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_l
 	posT.resize(6);
   	angT.resize(6);
 	//set the initial position
-	set_xyz(l_leg,&init_angle[0],0.05,0.13,-0.34);
-  	set_xyz(r_leg,&init_angle[1],0.05,-0.13,-0.34);
+	set_xyz(l_leg,&init_angle[0],0.06,0.11,-0.32);//0.06,0.11,-0.32
+  	set_xyz(r_leg,&init_angle[1],0.06,-0.11,-0.32);
 
 	posT << init_angle[0].q[0],init_angle[0].q[1],init_angle[0].q[2],
           init_angle[1].q[0],init_angle[1].q[1],init_angle[1].q[2];
@@ -78,7 +78,7 @@ Posdiff leg_controller::get_error(void){
 	return poserror;
 }
 
-void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd stc_tau){
+void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd stc_tau, Eigen::VectorXd user_cmd){
 
 	Eigen::VectorXd Tau_e(6);
 	// calculate the current joint angles
@@ -99,11 +99,11 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		gait_generate->update(timer);
 		
 		// ground reaction force calculate    ***** it can be put in another pthread *****
-		// stc_tau.setConstant(0);
+		stc_tau.setConstant(0);
 
 		// position controller
 		swctr->update(timer);
-		Eigen::VectorXd swc_tau = swctr->get_action();
+		Eigen::VectorXd swc_tau = swctr->get_action(user_cmd);
 
 		Eigen::VectorXd ltau(3),rtau(3);
 		if (gait_generate->leg_state[0] == stance_leg || gait_generate->leg_state[0] == Early_Contact) {

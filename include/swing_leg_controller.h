@@ -10,7 +10,7 @@ class swing_leg_controller{
 public:
     swing_leg_controller(Leg_state *bike,gait_generator *gait_generator,float desired_speed);
     void update(float current_time);
-    Eigen::VectorXd get_action(void);
+    Eigen::VectorXd get_action(Eigen::VectorXd user_cmd);
     void set_PDGain();
     Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
     Position postarget[2];

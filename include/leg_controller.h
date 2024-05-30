@@ -20,7 +20,7 @@ class leg_controller{
 
 public:
 	leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_leg_controller *swc, stance_leg_controller *stc);
-	void get_action(Leg_command *cmd,int Run_mode, Eigen::VectorXd stc_tau);
+	void get_action(Leg_command *cmd,int Run_mode, Eigen::VectorXd stc_tau, Eigen::VectorXd user_cmd);
 	void goto_xyz(float xx,float yy,float zz,Leg direction);
 	void get_inform(double i0,double i1,double i2,double i3,double i4,double i5);
 	void get_Tau(double Tau);

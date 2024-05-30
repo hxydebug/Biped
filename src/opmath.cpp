@@ -9,7 +9,11 @@ Eigen::Matrix3d rpy2romatrix(double roll,double pitch,double yaw){
     return rotation_matrix3;
 }
 
-
+Eigen::AngleAxisd romatrix2AngleAxis(Eigen::Matrix3d rotation_matrix){
+    Eigen::AngleAxisd rotation_vector;
+    rotation_vector.fromRotationMatrix(rotation_matrix);
+    return rotation_vector;
+}
 
 
 

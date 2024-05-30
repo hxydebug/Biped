@@ -7,7 +7,7 @@
 #include "Eigen/SparseCore"
 
 using qpOASES::QProblem;
-  
+
 typedef Eigen::Matrix<qpOASES::real_t, Eigen::Dynamic, Eigen::Dynamic,
                       Eigen::RowMajor>
     RowMajorMatrixXd;
@@ -84,15 +84,46 @@ stance_leg_controller::stance_leg_controller(Leg_state *bike,gait_generator *gai
   _desired_height << 0,0,0.32;
 }
 
-Eigen::VectorXd stance_leg_controller::get_action(void){
+Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     // std::vector<int> footcontact = licycle->GetFootContact();
     std::vector<int> footcontact(2);
     footcontact[0] = _gait_generator->leg_state[0];
     footcontact[1] = _gait_generator->leg_state[1];
-    float com_velocity = licycle->body_v;
-    float com_roll = licycle->varphi;
-    float com_droll = licycle->dvarphi;
+
+    Eigen::Vector3d p_com_des,w_com_des,dp_com_des,dw_com_des;
+    p_com_des<<0,0,user_cmd[2];//0.41~0.42
+    dp_com_des<<user_cmd[0],user_cmd[1],0;
+    w_com_des<<0,0,0;
+    dw_com_des<<0,0,0;
+
+    Eigen::VectorXd p_com(3);
+    Eigen::VectorXd dp_com(3);
+    Eigen::VectorXd dw_com(3);
+    p_com << 0,0,licycle->com_height;
+    Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
+    dp_com << licycle->com_velocity[0],licycle->com_velocity[1],licycle->com_velocity[2];
+    dw_com << licycle->omega[0],licycle->omega[1],licycle->omega[2];
+
+    Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
+    Eigen::Vector3d kp_p(0,0,10);
+    Eigen::Vector3d kd_p(1,1,1);
+    Eigen::Vector3d kp_w(1,1,1);
+    Eigen::Vector3d kd_w(0.1,0.1,0.1);
+
+    Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
+    Eigen::Matrix3d M_kd_p = kd_p.asDiagonal();
+    Eigen::Matrix3d M_kp_w = kp_w.asDiagonal();
+    Eigen::Matrix3d M_kd_w = kd_w.asDiagonal();
+
+    Eigen::Matrix3d R_error = com_rotm_des * com_rotm.transpose();
+    Eigen::AngleAxisd axis_angle = romatrix2AngleAxis(R_error);
+    Eigen::Vector3d w_error = axis_angle.angle()*axis_angle.axis();
+    // std::cout<<"angle_axis:"<<w_error<<std::endl;
+    Eigen::Vector3d f_pd = M_kp_p * (p_com_des-p_com) + M_kd_p * (dp_com_des-dp_com);
+    Eigen::Vector3d tau_pd = M_kp_w * w_error + M_kd_w * (dw_com_des - dw_com);
+
     Eigen::MatrixXd foot_positions(3,2);
+    Eigen::MatrixXd foot_positions_w(3,2);
     Angle l_angle;
     Angle r_angle;
     Position l_position;
@@ -103,17 +134,26 @@ Eigen::VectorXd stance_leg_controller::get_action(void){
     }
     Kinematics(&l_angle,&l_position,0);
     Kinematics(&r_angle,&r_position,1);
-    foot_positions << l_position.x, r_position.x,
-                      l_position.y, r_position.y, 
-                      l_position.z + 0.34, r_position.z + 0.34;
-    std::vector<double> force = Cmpc.ComputeContactForces(com_velocity,com_roll,com_droll,footcontact,
-                                                        foot_positions,desired_xspeed,desired_roll,0);
+    //foot positions in body coordinate
+    foot_positions << l_position.x+0.005, r_position.x+0.005,
+                      l_position.y, r_position.y,
+                      l_position.z, r_position.z;
+
+    Eigen::Matrix3d rot_matrix = com_rotm;
+    foot_positions_w = rot_matrix*foot_positions;
+
+    float m = 8.5;
+    //I_b to I_w
+    Eigen::Vector3d I_b(0.36,0.34,0.046);
+    Eigen::Matrix3d I_bM = I_b.asDiagonal();
+    Eigen::Matrix3d I_wM = rot_matrix*I_bM*rot_matrix.transpose();
+
+    std::vector<double> force = Cmpc.ComputeContactForces(f_pd,tau_pd,m,I_wM,foot_positions_w,footcontact);
     Eigen::Map<Eigen::VectorXd> force_E(force.data(),force.size());
     // std::cout<<force_E<<std::endl;
     Eigen::VectorXd l_force,r_force;
     l_force = force_E.head(3);
     r_force = force_E.tail(3);
-    auto rot_matrix = rpy2romatrix(com_roll,0,0);
     Eigen::VectorXd ltau(3),rtau(3);
     if (footcontact[0] == 0){
         ltau << 0,0,0;
@@ -139,44 +179,16 @@ const int kConstraintDim = 5;
 const int k3Dim = 3;
 const int num_legs = 2;
 const int action_dim_ = num_legs * k3Dim;
-const int kStateDim = 4;
-const int planning_horizon = 4;
-const float time_step = 0.05;
-const float kGravity = 9.8;
+const int planning_horizon = 1;
+const float kGravity = 9.81;
 const float kMaxScale = 10;
 const float kMinScale = 0.1;
-float body_mass = 25;
-float inv_mass = 1/body_mass;
-float Jb = 0.8;
-float Jt = body_mass*hG*hG + Jb;
-float alpha = 0.0001;
-const std::vector<double> qp_weights {200.0,1.0,1.0,1.0};
+float body_mass = 8.5;
 std::vector<float> foot_friction_coeffs {0.45,0.45};
 
 ConvexMpc::ConvexMpc()
-    : qp_weights_(AsBlockDiagonalMat(qp_weights, planning_horizon)),
-    qp_weights_single_(AsBlockDiagonalMat(qp_weights, 1)),
-    alpha_(alpha* Eigen::MatrixXd::Identity(num_legs* planning_horizon* k3Dim,
-        num_legs* planning_horizon* k3Dim)),
-    alpha_single_(alpha*
-        Eigen::MatrixXd::Identity(num_legs* k3Dim, num_legs* k3Dim)),
-
-    state_(kStateDim),
-    desired_states_(kStateDim* planning_horizon),
+    :
     contact_states_(planning_horizon, num_legs),
-    foot_positions_base_(k3Dim, num_legs),
-    foot_positions_world_(k3Dim, num_legs),
-    a_mat_(kStateDim, kStateDim),
-    b_mat_(kStateDim, action_dim_),
-    ab_concatenated_(kStateDim + action_dim_, kStateDim + action_dim_),
-    a_exp_(kStateDim, kStateDim),
-    b_exp_(kStateDim, action_dim_),
-    a_qp_(kStateDim* planning_horizon, kStateDim),
-    b_qp_(kStateDim* planning_horizon, action_dim_* planning_horizon),
-    p_mat_(num_legs* planning_horizon* k3Dim,
-        num_legs* planning_horizon* k3Dim),
-    q_vec_(num_legs* planning_horizon* k3Dim),
-    anb_aux_(kStateDim* planning_horizon, action_dim_),
     constraint_(kConstraintDim* num_legs* planning_horizon,
         action_dim_* planning_horizon),
     constraint_lb_(kConstraintDim* num_legs* planning_horizon),
@@ -184,19 +196,7 @@ ConvexMpc::ConvexMpc()
     qp_solution_(k3Dim* num_legs)
 
 {
-    state_.setZero();
-    desired_states_.setZero();
     contact_states_.setZero();
-    foot_positions_base_.setZero();
-    foot_positions_world_.setZero();
-    a_mat_.setZero();
-    b_mat_.setZero();
-    ab_concatenated_.setZero();
-    a_exp_.setZero();
-    b_exp_.setZero();
-    a_qp_.setZero();
-    b_qp_.setZero();
-    b_qp_transpose_.setZero();
     constraint_.setZero();
     constraint_lb_.setZero();
     constraint_ub_.setZero();
@@ -204,37 +204,40 @@ ConvexMpc::ConvexMpc()
 }
 
 std::vector<double> ConvexMpc::ComputeContactForces(
-    float com_velocity,
-    float com_roll,
-    float com_droll,
-    std::vector<int> foot_contact_states,
-    Eigen::MatrixXd foot_positions_body_frame,
-    float desired_com_velocity,
-    float desired_com_roll,
-    float desired_com_droll) {
+    Eigen::Vector3d f_pd,
+    Eigen::Vector3d tau_pd,
+    float m,
+    Eigen::Matrix3d I_wM,
+    Eigen::MatrixXd foot_positions_w,
+    std::vector<int> foot_contact_states) {
     
-    // First we compute the foot positions in the world frame.
-    foot_positions_base_ = foot_positions_body_frame;
-    auto rot_matrix = rpy2romatrix(com_roll,0,0);
-    foot_positions_world_ = rot_matrix * foot_positions_base_;
+    //antisymmetric matrix
+    Eigen::VectorXd lf_position_w = foot_positions_w.col(0);
+    Eigen::VectorXd rf_position_w = foot_positions_w.col(1);
+    Eigen::Matrix3d lf_X = antisym_Matrix(lf_position_w);
+    Eigen::Matrix3d rf_X = antisym_Matrix(rf_position_w);
     
-    // Prepare the current and desired state vectors of length kStateDim * planning_horizon.
-    state_ << com_roll,0,com_droll,com_velocity;
-    for (int i = 0; i < planning_horizon; ++i) {
-        desired_states_[i * kStateDim + 0] = desired_com_roll;
-        desired_states_[i * kStateDim + 1] = 0;
-        desired_states_[i * kStateDim + 2] = desired_com_droll;
-        desired_states_[i * kStateDim + 3] = desired_com_velocity;
-    }
+    //calculate A & B matrix
+    Eigen::MatrixXd A_mat(6,6),B_mat(6,1);
+    A_mat.setZero();
+    B_mat.setZero();
+    A_mat.block<3,3>(0,0)=Eigen::MatrixXd::Identity(3, 3);
+    A_mat.block<3,3>(0,3)=Eigen::MatrixXd::Identity(3, 3);
+    A_mat.block<3,3>(3,0)=lf_X;
+    A_mat.block<3,3>(3,3)=rf_X;
+    float g = 9.81;
+    Eigen::Vector3d g_acc(0,0,g);
+    B_mat << m*(f_pd+g_acc),I_wM*tau_pd;
 
-    //calculate matrix
-    CalculateAMat(&a_mat_);
-    CalculateBMat(foot_positions_world_,&b_mat_);
-    CalculateExponentials(a_mat_,b_mat_,time_step,&ab_concatenated_,&a_exp_,&b_exp_);
-    CalculateQpMats(a_exp_,b_exp_,qp_weights_single_,alpha_single_,planning_horizon,&a_qp_,&anb_aux_,&b_qp_,&p_mat_);
+    //QP
+    Eigen::VectorXd L(6);
+    L << 1,1,10,120,1,1;
+    Eigen::MatrixXd L_M = L.asDiagonal();
+    Eigen::MatrixXd W = 0.001*Eigen::MatrixXd::Identity(6, 6);
+    Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);
 
-    const Eigen::MatrixXd state_diff = a_qp_ * state_ - desired_states_;
-    q_vec_ = 2 * b_qp_.transpose() * (qp_weights_ * state_diff);
+    Eigen::MatrixXd Hd = 2*(A_mat.transpose()*L_M*A_mat + W);
+    Eigen::VectorXd fd = -2*(A_mat.transpose()*L_M*B_mat);
 
     const Eigen::VectorXd one_vec = Eigen::VectorXd::Constant(planning_horizon, 1.0);
     const Eigen::VectorXd zero_vec = Eigen::VectorXd::Zero(planning_horizon);
@@ -247,8 +250,8 @@ std::vector<double> ConvexMpc::ComputeContactForces(
         }
     }
 
-    CalculateConstraintBounds(contact_states_, body_mass * kGravity * kMaxScale,
-        body_mass * kGravity * kMinScale,
+    CalculateConstraintBounds(contact_states_, body_mass * kGravity * 1.5,
+        body_mass * kGravity * 0,
         foot_friction_coeffs[0], planning_horizon,
         &constraint_lb_, &constraint_ub_);
 
@@ -262,18 +265,17 @@ std::vector<double> ConvexMpc::ComputeContactForces(
         num_legs_in_contact += 1;
       }
     }
-
     const int qp_dim = num_legs_in_contact * k3Dim * planning_horizon;
     const int constraint_dim = num_legs_in_contact * 5 * planning_horizon;
     std::vector<qpOASES::real_t> hessian(qp_dim * qp_dim, 0);
     Eigen::Map<RowMajorMatrixXd> hessian_mat_view(hessian.data(), qp_dim, qp_dim);
     // Copy to the hessian
-    CopyToMatrix(p_mat_, foot_contact_states, num_legs, planning_horizon,
+    CopyToMatrix(Hd, foot_contact_states, num_legs, planning_horizon,
                  k3Dim, k3Dim, false, &hessian_mat_view);
 
     std::vector<qpOASES::real_t> g_vec(qp_dim, 0);
     // Copy the g_vec
-    CopyToVec(q_vec_, foot_contact_states, num_legs, planning_horizon, k3Dim,
+    CopyToVec(fd, foot_contact_states, num_legs, planning_horizon, k3Dim,
               &g_vec);
 
     std::vector<qpOASES::real_t> a_mat(qp_dim * constraint_dim, 0);
@@ -327,152 +329,12 @@ std::vector<double> ConvexMpc::ComputeContactForces(
     return qp_solution_;
 }
 
-Eigen::MatrixXd AsBlockDiagonalMat(const std::vector<double>& qp_weights,
-    int planning_horizon) {
-    const Eigen::Map<const Eigen::VectorXd> qp_weights_vec(qp_weights.data(),
-        qp_weights.size());
-    // Directly return the rhs will cause a TSAN failure, probably due to the
-    // asDiagonal not reall copying the memory. Creates the temporary will ensure
-    // copy on return.
-    const Eigen::MatrixXd qp_weights_mat =
-        qp_weights_vec.replicate(planning_horizon, 1).asDiagonal();
-    return qp_weights_mat;
-}
-
-void CalculateAMat(Eigen::MatrixXd* a_mat_ptr) {
-
-    Eigen::MatrixXd& a_mat = *a_mat_ptr;
-
-    a_mat(0, 2) = 1;
-    a_mat(1, 3) = 1;
-    a_mat(2, 0) = body_mass*9.8*hG/Jt;
-
-}
-
-void CalculateBMat(const Eigen::MatrixXd& foot_positions, Eigen::MatrixXd* b_mat_ptr) {
-    // b_mat contains non_zero elements only in row 6:12.
-    const int num_legs = foot_positions.cols();
-    Eigen::MatrixXd& b_mat = *b_mat_ptr;
-    for (int i = 0; i < num_legs; ++i) {
-        b_mat(2, i * k3Dim+1) = -foot_positions.col(i)[2]/Jt;
-        b_mat(2, i * k3Dim+2) = foot_positions.col(i)[1]/Jt;
-        b_mat(3, i * k3Dim) = inv_mass;
-
-    }
-}
-
-void CalculateExponentials(const Eigen::MatrixXd& a_mat, const Eigen::MatrixXd& b_mat,
-    float timestep, Eigen::MatrixXd* ab_mat_ptr,
-    Eigen::MatrixXd* a_exp_ptr, Eigen::MatrixXd* b_exp_ptr) {
-    const int state_dim = 4;
-    Eigen::MatrixXd& ab_mat = *ab_mat_ptr;
-    ab_mat.block<state_dim, state_dim>(0, 0) = a_mat * timestep;
-    const int action_dim = b_mat.cols();
-    ab_mat.block(0, state_dim, state_dim, action_dim) = b_mat * timestep;
-
-    // This temporary is inevitable.
-     Eigen::MatrixXd ab_exp = ab_mat.exp();
-    *a_exp_ptr = ab_exp.block<state_dim, state_dim>(0, 0);
-    *b_exp_ptr = ab_exp.block(0, state_dim, state_dim, action_dim);
-}
-
-void CalculateQpMats(const Eigen::MatrixXd& a_exp, const Eigen::MatrixXd& b_exp,
-    const Eigen::MatrixXd& qp_weights_single,
-    const Eigen::MatrixXd& alpha_single, int horizon,
-    Eigen::MatrixXd* a_qp_ptr, Eigen::MatrixXd* anb_aux_ptr,
-    Eigen::MatrixXd* b_qp_ptr, Eigen::MatrixXd* p_mat_ptr) {
-    const int state_dim = 4;
-    Eigen::MatrixXd& a_qp = *a_qp_ptr;
-    a_qp.block(0, 0, state_dim, state_dim) = a_exp;
-    for (int i = 1; i < horizon; ++i) {
-        a_qp.block<state_dim, state_dim>(i * state_dim, 0) =
-            a_exp * a_qp.block<state_dim, state_dim>((i - 1) * state_dim, 0);
-    }
-
-    const int action_dim = b_exp.cols();
-
-    Eigen::MatrixXd& anb_aux = *anb_aux_ptr;
-    // Compute auxiliary matrix: [B_exp, A_exp * B_exp, ..., A_exp^(h-1) * B_exp]
-    anb_aux.block(0, 0, state_dim, action_dim) = b_exp;
-    for (int i = 1; i < horizon; ++i) {
-        anb_aux.block(i * state_dim, 0, state_dim, action_dim) =
-            a_exp * anb_aux.block((i - 1) * state_dim, 0, state_dim, action_dim);
-    }
-
-    Eigen::MatrixXd& b_qp = *b_qp_ptr;
-    for (int i = 0; i < horizon; ++i) {
-        // Diagonal block.
-        b_qp.block(i * state_dim, i * action_dim, state_dim, action_dim) = b_exp;
-        // Off diagonal Diagonal block = A^(i - j - 1) * B_exp.
-        for (int j = 0; j < i; ++j) {
-            const int power = i - j;
-            b_qp.block(i * state_dim, j * action_dim, state_dim, action_dim) =
-                anb_aux.block(power * state_dim, 0, state_dim, action_dim);
-        }
-    }
-
-    // We construct the P matrix by filling in h x h submatrices, each with size
-    // action_dim x action_dim.
-    // The r_th (r in [1, h]) diagonal submatrix of P is:
-    // 2 * sum_{i=0:h-r}(B'A'^i L A^i B) + alpha, where h is the horizon.
-    // The off-diagonal submatrix at row r and column c of P is:
-    // 2 * sum_{i=0:h-c}(B'A'^{h-r-i} L A^{h-c-i} B)
-    Eigen::MatrixXd& p_mat = *p_mat_ptr;
-    // We first compute the submatrices at column h.
-    for (int i = horizon - 1; i >= 0; --i) {
-        p_mat.block(i * action_dim, (horizon - 1) * action_dim, action_dim,
-            action_dim) =
-            anb_aux.block((horizon - i - 1) * state_dim, 0, state_dim, action_dim)
-            .transpose() *
-            qp_weights_single * b_exp;
-       // Fill the lower-triangle part by transposing the corresponding
-       // upper-triangle part.
-        if (i != horizon - 1) {
-            p_mat.block((horizon - 1) * action_dim, i * action_dim, action_dim,
-                action_dim) =
-                p_mat
-                .block(i * action_dim, (horizon - 1) * action_dim, action_dim,
-                    action_dim)
-                .transpose();
-        }
-    }
-
-    // We then fill in the submatrices in the middle by propagating the values
-    // from lower right to upper left.
-    for (int i = horizon - 2; i >= 0; --i) {
-        // Diagonal block.
-        p_mat.block(i * action_dim, i * action_dim, action_dim, action_dim) =
-            p_mat.block((i + 1) * action_dim, (i + 1) * action_dim, action_dim,
-                action_dim) +
-            anb_aux.block((horizon - i - 1) * state_dim, 0, state_dim, action_dim)
-            .transpose() *
-            qp_weights_single *
-            anb_aux.block((horizon - i - 1) * state_dim, 0, state_dim,
-                action_dim);
-        // Off diagonal block
-        for (int j = i + 1; j < horizon - 1; ++j) {
-            p_mat.block(i * action_dim, j * action_dim, action_dim, action_dim) =
-                p_mat.block((i + 1) * action_dim, (j + 1) * action_dim, action_dim,
-                    action_dim) +
-                anb_aux.block((horizon - i - 1) * state_dim, 0, state_dim, action_dim)
-                .transpose() *
-                qp_weights_single *
-                anb_aux.block((horizon - j - 1) * state_dim, 0, state_dim,
-                    action_dim);
-            // Fill the lower-triangle part by transposing the corresponding
-            // upper-triangle part.
-            p_mat.block(j * action_dim, i * action_dim, action_dim, action_dim) =
-                p_mat.block(i * action_dim, j * action_dim, action_dim, action_dim)
-                .transpose();
-        }
-    }
-
-    // Multiply by 2 and add alpha.
-    p_mat *= 2.0;
-    for (int i = 0; i < horizon; ++i) {
-        p_mat.block(i * action_dim, i * action_dim, action_dim, action_dim) +=
-            alpha_single;
-    }
+Eigen::MatrixXd  antisym_Matrix(Eigen::Vector3d w_axis){
+    Eigen::Matrix3d w_hat;
+    w_hat<< 0,-w_axis(2),w_axis(1),
+            w_axis(2),0,-w_axis(0),
+            -w_axis(1),w_axis(0),0;
+    return w_hat;
 }
 
 void UpdateConstraintsMatrix(std::vector<float>& friction_coeff,

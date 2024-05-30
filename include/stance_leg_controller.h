@@ -11,14 +11,12 @@ public:
 
     ConvexMpc();
     std::vector<double> ComputeContactForces(
-        float com_velocity,
-        float com_roll,
-        float com_droll,
-        std::vector<int> foot_contact_states,
-        Eigen::MatrixXd foot_positions_body_frame,
-        float desired_com_velocity,
-        float desired_com_roll,
-        float desired_com_droll);
+        Eigen::Vector3d f_pd,
+        Eigen::Vector3d tau_pd,
+        float m,
+        Eigen::Matrix3d I_wM,
+        Eigen::MatrixXd foot_positions_w,
+        std::vector<int> foot_contact_states);
 
 private:
 
@@ -64,7 +62,7 @@ private:
 class stance_leg_controller{
 public:
     stance_leg_controller(Leg_state *bike,gait_generator *gait_generator,float desired_speed);
-    Eigen::VectorXd get_action(void);
+    Eigen::VectorXd get_action(Eigen::VectorXd user_cmd);
     float desired_xspeed;
     float desired_roll;
     
@@ -78,21 +76,6 @@ private:
 };
 
 // useful function
-Eigen::MatrixXd AsBlockDiagonalMat(const std::vector<double>& qp_weights,
-    int planning_horizon);
-void CalculateAMat(Eigen::MatrixXd* a_mat_ptr);
-void CalculateBMat(const Eigen::MatrixXd& foot_positions,
-    Eigen::MatrixXd* b_mat_ptr);
-void CalculateExponentials(const Eigen::MatrixXd& a_mat,
-    const Eigen::MatrixXd& b_mat, float timestep,
-    Eigen::MatrixXd* ab_mat_ptr,
-    Eigen::MatrixXd* a_exp_ptr,
-    Eigen::MatrixXd* b_exp_ptr);
-void CalculateQpMats(const Eigen::MatrixXd& a_exp, const Eigen::MatrixXd& b_exp,
-    const Eigen::MatrixXd& qp_weights_single,
-    const Eigen::MatrixXd& alpha_single, int horizon,
-    Eigen::MatrixXd* a_qp_ptr, Eigen::MatrixXd* anb_aux_ptr,
-    Eigen::MatrixXd* b_qp_ptr, Eigen::MatrixXd* p_mat_ptr);
 void UpdateConstraintsMatrix(std::vector<float>& friction_coeff,
     int horizon, int num_legs,
     Eigen::MatrixXd* constraint_ptr);
@@ -100,4 +83,5 @@ void CalculateConstraintBounds(const Eigen::MatrixXd& contact_state, float fz_ma
     float fz_min, float friction_coeff, int horizon,
     Eigen::VectorXd* constraint_lb_ptr,
     Eigen::VectorXd* constraint_ub_ptr);
+Eigen::MatrixXd  antisym_Matrix(Eigen::Vector3d w_axis);
 #endif

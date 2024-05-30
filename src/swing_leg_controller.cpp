@@ -18,6 +18,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   }
   phase_switch_foot_local_position[0] = getFootPositionInBaswFrame(nowang,0);
   phase_switch_foot_local_position[1] = getFootPositionInBaswFrame(nowang,1);
+  phase_switch_foot_local_position1[0] = getFootPositionInBaswFrame(nowang,0);
+  phase_switch_foot_local_position1[1] = getFootPositionInBaswFrame(nowang,1);
   desired_xspeed = desired_speed;
   angles.resize(6);
   _desired_height.resize(3);
@@ -27,8 +29,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   _desired_height << 0,0,desired_height-foot_clearance;
   angles.setConstant(0);
   action.setConstant(0);
-  hip_positions[0] << detx+0.07,wid/2+0.13,detz;
-  hip_positions[1] << detx+0.07,-wid/2-0.13,detz;
+  hip_positions[0] << detx,wid/2+0.05,0;
+  hip_positions[1] << detx,-wid/2-0.05,0;
 
   swing_leg_controller::set_PDGain();
 
@@ -56,11 +58,13 @@ void swing_leg_controller::update(float current_time){
 
 }
 
-Eigen::VectorXd swing_leg_controller::get_action(void){
+Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
 
   Eigen::VectorXd com_velocity(3);
-  com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
-  Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
+  // com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
+  // Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
+  com_velocity << 0,0,0;
+  Eigen::Matrix3d com_rotm = rpy2romatrix(0,0,0);
 
   Eigen::VectorXd nowang(6);
   Eigen::VectorXd nowangV(6);
@@ -83,7 +87,9 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
   // mass point velocity
   Eigen::VectorXd hip_horizontal_velocity = com_velocity;
   Eigen::VectorXd target_hip_horizontal_velocity(3);
-  target_hip_horizontal_velocity << desired_xspeed,0,0;
+  target_hip_horizontal_velocity << user_cmd[0],user_cmd[1],0;
+  desired_height = user_cmd[2];
+  _desired_height << 0,0,desired_height-foot_clearance;
 
   for(int i(0);i<2;i++){
 
@@ -94,7 +100,7 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
                                   + hip_positions[i];
 
       // from world to body frame
-      Eigen::VectorXd foot_target_postion_b = com_rotm.transpose()*foot_target_position1;
+      Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position1;
       
       Position end_position1;
       end_position1.x = foot_target_position_b[0];
@@ -150,7 +156,8 @@ Eigen::VectorXd swing_leg_controller::get_action(void){
 
       //get joint[i] anglesV
       Eigen::Vector3d ansV;
-      ansV = calcu_Jaco(legpos[i],i).inverse()*dP;
+      // ansV = calcu_Jaco(legpos[i],i).inverse()*dP;
+      ansV.setConstant(0);
 
       // swing phase
       motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 50.0, 1);
