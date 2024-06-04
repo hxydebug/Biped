@@ -26,6 +26,9 @@ typedef struct{
     float omega[3];
     float acc[3];
     float com_velocity[3];
+    float com_position[3];
+    float left_foot_p[3];
+    float right_foot_p[3];
     float com_height;
 }  Leg_state;
 

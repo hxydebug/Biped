@@ -18,49 +18,49 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     _ps.setZero();
     _vs.setZero();
     _A.setZero();
-    _A.block(0, 0, 3, 3) = Eigen::Matrix<float, 3, 3>::Identity();
-    _A.block(0, 3, 3, 3) = dt * Eigen::Matrix<float, 3, 3>::Identity();
-    _A.block(3, 3, 3, 3) = Eigen::Matrix<float, 3, 3>::Identity();
-    _A.block(6, 6, 6, 6) = Eigen::Matrix<float, 6, 6>::Identity();
+    _A.block(0, 0, 3, 3) = Eigen::Matrix<double, 3, 3>::Identity();
+    _A.block(0, 3, 3, 3) = dt * Eigen::Matrix<double, 3, 3>::Identity();
+    _A.block(3, 3, 3, 3) = Eigen::Matrix<double, 3, 3>::Identity();
+    _A.block(6, 6, 6, 6) = Eigen::Matrix<double, 6, 6>::Identity();
     _B.setZero();
-    _B.block(3, 0, 3, 3) = dt * Eigen::Matrix<float, 3, 3>::Identity();
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> C1(3, 6);
-    C1 << Eigen::Matrix<float, 3, 3>::Identity(), Eigen::Matrix<float, 3, 3>::Zero();
-    Eigen::Matrix<float, Eigen::Dynamic, Eigen::Dynamic> C2(3, 6);
-    C2 << Eigen::Matrix<float, 3, 3>::Zero(), Eigen::Matrix<float, 3, 3>::Identity();
+    _B.block(3, 0, 3, 3) = dt * Eigen::Matrix<double, 3, 3>::Identity();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> C1(3, 6);
+    C1 << Eigen::Matrix<double, 3, 3>::Identity(), Eigen::Matrix<double, 3, 3>::Zero();
+    Eigen::Matrix<double, Eigen::Dynamic, Eigen::Dynamic> C2(3, 6);
+    C2 << Eigen::Matrix<double, 3, 3>::Zero(), Eigen::Matrix<double, 3, 3>::Identity();
     _C.setZero();
     _C.block(0, 0, 3, 6) = C1;
     _C.block(3, 0, 3, 6) = C1;
-    _C.block(0, 6, 6, 6) = float(-1) * Eigen::Matrix<float, 6, 6>::Identity();
+    _C.block(0, 6, 6, 6) = double(-1) * Eigen::Matrix<double, 6, 6>::Identity();
     _C.block(6, 0, 3, 6) = C2;
     _C.block(9, 0, 3, 6) = C2;
-    _C(12, 8) = float(1);
-    _C(13, 11) = float(1);
+    _C(12, 8) = double(1);
+    _C(13, 11) = double(1);
     _P.setIdentity();
-    _P = float(100) * _P;
+    _P = double(100) * _P;
     _Q0.setIdentity();
-    _Q0.block(0, 0, 3, 3) = (dt / 20.f) * Eigen::Matrix<float, 3, 3>::Identity();
+    _Q0.block(0, 0, 3, 3) = (dt / 20.f) * Eigen::Matrix<double, 3, 3>::Identity();
     _Q0.block(3, 3, 3, 3) =
-        (dt * 9.8f / 20.f) * Eigen::Matrix<float, 3, 3>::Identity();
-    _Q0.block(6, 6, 6, 6) = dt * Eigen::Matrix<float, 6, 6>::Identity();
+        (dt * 9.8f / 20.f) * Eigen::Matrix<double, 3, 3>::Identity();
+    _Q0.block(6, 6, 6, 6) = dt * Eigen::Matrix<double, 6, 6>::Identity();
     _R0.setIdentity();
 
 }
 
 void PosVelEstimator::run(){
-    float process_noise_pimu = 0.02;
-    float process_noise_vimu = 0.02;
-    float process_noise_pfoot = 0.002;
-    float sensor_noise_pimu_rel_foot = 0.001;
-    float sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
-    float sensor_noise_zfoot = 0.001;
+    double process_noise_pimu = 0.02;
+    double process_noise_vimu = 0.02;
+    double process_noise_pfoot = 0.002;
+    double sensor_noise_pimu_rel_foot = 0.001;
+    double sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
+    double sensor_noise_zfoot = 0.001;
 
-    Eigen::Matrix<float, 18, 18> Q = Eigen::Matrix<float, 18, 18>::Identity();
+    Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
     Q.block(0, 0, 3, 3) = _Q0.block(0, 0, 3, 3) * process_noise_pimu;
     Q.block(3, 3, 3, 3) = _Q0.block(3, 3, 3, 3) * process_noise_vimu;
     Q.block(6, 6, 6, 6) = _Q0.block(6, 6, 6, 6) * process_noise_pfoot;
 
-    Eigen::Matrix<float, 14, 14> R = Eigen::Matrix<float, 14, 14>::Identity();
+    Eigen::Matrix<double, 14, 14> R = Eigen::Matrix<double, 14, 14>::Identity();
     R.block(0, 0, 6, 6) = _R0.block(0, 0, 6, 6) * sensor_noise_pimu_rel_foot;
     R.block(6, 6, 6, 6) =
         _R0.block(6, 6, 6, 6) * sensor_noise_vimu_rel_foot;
@@ -76,11 +76,11 @@ void PosVelEstimator::run(){
     Eigen::VectorXd Body_acc;
     Body_acc.resize(3);
     Body_acc << _robot->acc[0],_robot->acc[1],_robot->acc[2];
-    Eigen::VectorXd World_acc = com_rotm*Body_acc;
+    Eigen::VectorXd World_acc = Rbod*Body_acc;
     // std::cout << "A WORLD\n" << World_acc << "\n";
-    Eigen::Matrix<float, 2, 1> pzs = Eigen::Matrix<float, 2, 1>::Zero();
-    Eigen::Matrix<float, 2, 1> trusts = Eigen::Matrix<float, 2, 1>::Zero();
-    Eigen::Matrix<float, 3, 1> p0, v0;
+    Eigen::Matrix<double, 2, 1> pzs = Eigen::Matrix<double, 2, 1>::Zero();
+    Eigen::Matrix<double, 2, 1> trusts = Eigen::Matrix<double, 2, 1>::Zero();
+    Eigen::Matrix<double, 3, 1> p0, v0;
     p0 << _xhat[0], _xhat[1], _xhat[2];
     v0 << _xhat[3], _xhat[4], _xhat[5];
 
@@ -104,7 +104,7 @@ void PosVelEstimator::run(){
 
         // get foot position in world frame
         Position posxyz = getFootPositionInBaswFrame(nowang,i);
-        Eigen::VectorXd p_rel(3);
+        Eigen::Vector3d p_rel;
         p_rel[0] = posxyz.x;
         p_rel[1] = posxyz.y;
         p_rel[2] = posxyz.z;
@@ -112,43 +112,48 @@ void PosVelEstimator::run(){
 
         // get foot velocity in world frame
         Eigen::VectorXd dp_rel(3);
-        dp_rel = calcu_Jaco(legpos[i],i)*legvel[i];
-        Eigen::VectorXd omegaBody(3);
-        omegaBody << _robot->omega[0], _robot->omega[1], _robot->omega[2];
-        Eigen::VectorXd dp_f = Rbod * (omegaBody.cross(p_rel) + dp_rel);
+        Eigen::Matrix3d Jac = calcu_Jaco(legpos[i],i);
+        dp_rel = Jac*legvel[i];
+        Eigen::Vector3d omegaBody;
+        omegaBody[0] = _robot->omega[0];
+        omegaBody[1] = _robot->omega[1];
+        omegaBody[2] = _robot->omega[2];
+        // cross must define specificaly
+        Eigen::VectorXd cross_result = omegaBody.cross(p_rel);
+        Eigen::VectorXd dp_f = Rbod * (cross_result + dp_rel);
 
         qindex = 6 + i1;
         rindex1 = i1;
         rindex2 = 6 + i1;
         rindex3 = 12 + i;
 
-        float trust = float(1);
-        float phase = 0;
+        double trust = double(1);
+        double phase = 0;
         if (_gait_generator->leg_state[i] == 1)// only stance foot, phase > 0
         {
-            phase = fmin(_gait_generator->normalized_phase[i], float(1));
+            phase = fmin(_gait_generator->normalized_phase[i], double(1));
         }
-        //float trust_window = float(0.25);
-        float trust_window = float(0.2);
+        //double trust_window = double(0.25);
+        double trust_window = double(0.2);
 
         if (phase < trust_window) {
         trust = phase / trust_window;
-        } else if (phase > (float(1) - trust_window)) {
-        trust = (float(1) - phase) / trust_window;
+        } else if (phase > (double(1) - trust_window)) {
+        trust = (double(1) - phase) / trust_window;
         }
-        //float high_suspect_number(1000);
-        float high_suspect_number(100);
+        //double high_suspect_number(1000);
+        double high_suspect_number(100);
 
         //printf("Trust %d: %.3f\n", i, trust);
         // it is not confident to predict swing foot position
         Q.block(qindex, qindex, 3, 3) =
-            (float(1) + (float(1) - trust) * high_suspect_number) * Q.block(qindex, qindex, 3, 3);
+            (double(1) + (double(1) - trust) * high_suspect_number) * Q.block(qindex, qindex, 3, 3);
         // it is not confident to measure swing foot velocity and z position
         R.block(rindex1, rindex1, 3, 3) = 1 * R.block(rindex1, rindex1, 3, 3);
         R.block(rindex2, rindex2, 3, 3) =
-            (float(1) + (float(1) - trust) * high_suspect_number) * R.block(rindex2, rindex2, 3, 3);
+            (double(1) + (double(1) - trust) * high_suspect_number) * R.block(rindex2, rindex2, 3, 3);
         R(rindex3, rindex3) =
-            (float(1) + (float(1) - trust) * high_suspect_number) * R(rindex3, rindex3);
+            (double(1) + (double(1) - trust) * high_suspect_number) * R(rindex3, rindex3);
 
         trusts(i) = trust;
 
@@ -157,34 +162,44 @@ void PosVelEstimator::run(){
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
     }
 
-    Eigen::Matrix<float, 14, 1> y;
+    Eigen::Matrix<double, 14, 1> y;
     y << _ps, _vs, pzs;
     _xhat = _A * _xhat + _B * World_acc;
-    Eigen::Matrix<float, 12, 12> At = _A.transpose();
-    Eigen::Matrix<float, 12, 12> Pm = _A * _P * At + Q;
-    Eigen::Matrix<float, 12, 14> Ct = _C.transpose();
-    Eigen::Matrix<float, 14, 1> yModel = _C * _xhat;
-    Eigen::Matrix<float, 14, 1> ey = y - yModel;
-    Eigen::Matrix<float, 14, 14> S = _C * Pm * Ct + R;
+    Eigen::Matrix<double, 12, 12> At = _A.transpose();
+    Eigen::Matrix<double, 12, 12> Pm = _A * _P * At + Q;
+    Eigen::Matrix<double, 12, 14> Ct = _C.transpose();
+    Eigen::Matrix<double, 14, 1> yModel = _C * _xhat;
+    Eigen::Matrix<double, 14, 1> ey = y - yModel;
+    Eigen::Matrix<double, 14, 14> S = _C * Pm * Ct + R;
 
     // todo compute LU only once
-    Eigen::Matrix<float, 14, 1> S_ey = S.lu().solve(ey);
+    Eigen::Matrix<double, 14, 1> S_ey = S.lu().solve(ey);
     _xhat += Pm * Ct * S_ey;
 
-    Eigen::Matrix<float, 14, 12> S_C = S.lu().solve(_C);
-    _P = (Eigen::Matrix<float, 12, 12>::Identity() - Pm * Ct * S_C) * Pm;
+    Eigen::Matrix<double, 14, 12> S_C = S.lu().solve(_C);
+    _P = (Eigen::Matrix<double, 12, 12>::Identity() - Pm * Ct * S_C) * Pm;
 
-    Eigen::Matrix<float, 12, 12> Pt = _P.transpose();
-    _P = (_P + Pt) / float(2);
+    Eigen::Matrix<double, 12, 12> Pt = _P.transpose();
+    _P = (_P + Pt) / double(2);
 
-    if (_P.block(0, 0, 2, 2).determinant() > float(0.000001)) {
+    if (_P.block(0, 0, 2, 2).determinant() > double(0.000001)) {
         _P.block(0, 2, 2, 10).setZero();
         _P.block(2, 0, 10, 2).setZero();
-        _P.block(0, 0, 2, 2) /= float(10);
+        _P.block(0, 0, 2, 2) /= double(10);
     }
 
     _robot->com_height = _xhat(2, 0);
     _robot->com_velocity[0] = _xhat(3, 0);
     _robot->com_velocity[1] = _xhat(4, 0);
     _robot->com_velocity[2] = _xhat(5, 0);
+    _robot->com_position[0] = _xhat(0, 0);
+    _robot->com_position[1] = _xhat(1, 0);
+    _robot->com_position[2] = _xhat(2, 0);
+
+    _robot->left_foot_p[0] = _xhat(6, 0);
+    _robot->left_foot_p[1] = _xhat(7, 0);
+    _robot->left_foot_p[2] = _xhat(8, 0);
+    _robot->right_foot_p[0] = _xhat(9, 0);
+    _robot->right_foot_p[1] = _xhat(10, 0);
+    _robot->right_foot_p[2] = _xhat(11, 0);
 }

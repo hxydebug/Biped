@@ -673,7 +673,10 @@ void* record_thread(void* args)
                 << leg_state.com_velocity[0] << ", "<< leg_state.com_velocity[1] << ", "<< leg_state.com_velocity[2] << ", "
                 << leg_state.com_height << ", "
                 << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
-                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] 
+                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
+                << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
+                // << leg_state.left_foot_p[0] << ", "<< leg_state.left_foot_p[1] << ", " << leg_state.left_foot_p[2] << ", "
+                // << leg_state.right_foot_p[0] << ", "<< leg_state.right_foot_p[1] << ", " << leg_state.right_foot_p[2]
                 << std::endl;
 
 

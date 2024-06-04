@@ -19,15 +19,15 @@ public:
     PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep);
     void run();
 private:
-    Eigen::Matrix<float, 12, 1> _xhat;
-    Eigen::Matrix<float, 6, 1> _ps;
-    Eigen::Matrix<float, 6, 1> _vs;
-    Eigen::Matrix<float, 12, 12> _A;
-    Eigen::Matrix<float, 12, 12> _Q0;
-    Eigen::Matrix<float, 12, 12> _P;
-    Eigen::Matrix<float, 14, 14> _R0;
-    Eigen::Matrix<float, 12, 3> _B;
-    Eigen::Matrix<float, 14, 12> _C;
+    Eigen::Matrix<double, 12, 1> _xhat;
+    Eigen::Matrix<double, 6, 1> _ps;
+    Eigen::Matrix<double, 6, 1> _vs;
+    Eigen::Matrix<double, 12, 12> _A;
+    Eigen::Matrix<double, 12, 12> _Q0;
+    Eigen::Matrix<double, 12, 12> _P;
+    Eigen::Matrix<double, 14, 14> _R0;
+    Eigen::Matrix<double, 12, 3> _B;
+    Eigen::Matrix<double, 14, 12> _C;
 
     gait_generator *_gait_generator;
     Leg_state *_robot;
