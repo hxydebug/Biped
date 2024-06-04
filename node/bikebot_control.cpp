@@ -40,6 +40,7 @@
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
 #include "gait_generator.h"
+#include "PosVelEstimator.h"
 
 using namespace zen;
 using namespace std;
@@ -565,7 +566,8 @@ void* estimator_thread(void* args)
 
     //variables
     float timestep_length = 0.002;
-    float esti_timer = 0;
+    //initialize the estimator
+    PosVelEstimator Estimator(&leg_state,&gait_gen,timestep_length);
 
     //初始化定时器
     float _period = timestep_length;
@@ -592,45 +594,7 @@ void* estimator_thread(void* args)
         t.start();
 
         /********************** running begin **********************/
-        // legstate_update();
-        Eigen::Matrix3d com_rotm = rpy2romatrix(leg_state.rpy[0],leg_state.rpy[1],leg_state.rpy[2]);
-
-        //accumulate acc
-        Eigen::VectorXd Body_acc;
-        Body_acc.resize(3);
-        Body_acc << leg_state.acc[0],leg_state.acc[1],leg_state.acc[2];
-        Eigen::VectorXd World_acc = com_rotm*Body_acc;
-        for(int i=0;i<3;i++){
-            esti_com_velocity[i] += World_acc[i]*timestep_length;
-            leg_state.com_velocity[i] = esti_com_velocity[i];
-        }
-        
-        //estimate height
-        Eigen::VectorXd nowang(6);
-        for(int i(0);i<6;i++){
-            nowang[i] = leg_state.cbdata[i].p;
-        }
-        if(gait_gen.leg_state[0] == 1){
-            Position posxyz = getFootPositionInBaswFrame(nowang,0);
-            Eigen::VectorXd pos_vector(3);
-            pos_vector[0] = posxyz.x;
-            pos_vector[1] = posxyz.y;
-            pos_vector[2] = posxyz.z;
-            Eigen::VectorXd pos_world = com_rotm*pos_vector;
-            esti_com_height = -pos_world[2];
-        }
-        else{
-            Position posxyz = getFootPositionInBaswFrame(nowang,1);
-            Eigen::VectorXd pos_vector(3);
-            pos_vector[0] = posxyz.x;
-            pos_vector[1] = posxyz.y;
-            pos_vector[2] = posxyz.z;
-            Eigen::VectorXd pos_world = com_rotm*pos_vector;
-            esti_com_height = -pos_world[2];
-        }
-        leg_state.com_height = esti_com_height;
-
-        esti_timer += timestep_length;
+        Estimator.run();
         /********************** running end **********************/
 
         _lastRuntime = (float)t.getSeconds();
@@ -735,6 +699,10 @@ int main(int argc, char **argv)
     stc_tau.setConstant(0);
     user_cmd.resize(4);
     user_cmd << 0,0,0.45,0;   //vx,vy,height,dyaw
+    leg_state.com_height = user_cmd[2];
+    leg_state.com_velocity[0] = 0;
+    leg_state.com_velocity[1] = 0;
+    leg_state.com_velocity[2] = 0;
 
     //初始化can0，can1
     CAN_init();
