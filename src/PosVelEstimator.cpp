@@ -55,6 +55,9 @@ void PosVelEstimator::run(){
     double sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
     double sensor_noise_zfoot = 0.001;
 
+    Eigen::Vector3d position_offset;// from imu to com frame
+    position_offset.setZero();
+
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
     Q.block(0, 0, 3, 3) = _Q0.block(0, 0, 3, 3) * process_noise_pimu;
     Q.block(3, 3, 3, 3) = _Q0.block(3, 3, 3, 3) * process_noise_vimu;
@@ -70,14 +73,21 @@ void PosVelEstimator::run(){
     int rindex1 = 0;
     int rindex2 = 0;
     int rindex3 = 0;
-
+    // rotation matrix from body to world
     Eigen::Matrix3d Rbod = rpy2romatrix(_robot->rpy[0],_robot->rpy[1],_robot->rpy[2]);
+    // angular velocity in imu frame
+    Eigen::Vector3d omegaBody;
+    omegaBody[0] = _robot->omega[0];
+    omegaBody[1] = _robot->omega[1];
+    omegaBody[2] = _robot->omega[2];
+
     // Rbod * acc
     Eigen::VectorXd Body_acc;
     Body_acc.resize(3);
     Body_acc << _robot->acc[0],_robot->acc[1],_robot->acc[2];
     Eigen::VectorXd World_acc = Rbod*Body_acc;
     // std::cout << "A WORLD\n" << World_acc << "\n";
+
     Eigen::Matrix<double, 2, 1> pzs = Eigen::Matrix<double, 2, 1>::Zero();
     Eigen::Matrix<double, 2, 1> trusts = Eigen::Matrix<double, 2, 1>::Zero();
     Eigen::Matrix<double, 3, 1> p0, v0;
@@ -114,11 +124,7 @@ void PosVelEstimator::run(){
         Eigen::VectorXd dp_rel(3);
         Eigen::Matrix3d Jac = calcu_Jaco(legpos[i],i);
         dp_rel = Jac*legvel[i];
-        Eigen::Vector3d omegaBody;
-        omegaBody[0] = _robot->omega[0];
-        omegaBody[1] = _robot->omega[1];
-        omegaBody[2] = _robot->omega[2];
-        // cross must define specificaly
+        // cross must define specifically
         Eigen::VectorXd cross_result = omegaBody.cross(p_rel);
         Eigen::VectorXd dp_f = Rbod * (cross_result + dp_rel);
 
@@ -157,8 +163,9 @@ void PosVelEstimator::run(){
 
         trusts(i) = trust;
 
-        _ps.segment(i1, 3) = -p_f;
-        _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f);
+        // add bias to transfer imu frame to com frame
+        _ps.segment(i1, 3) = -p_f - Rbod * position_offset;
+        _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f) - Rbod * omegaBody.cross(position_offset);
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
     }
 
@@ -188,18 +195,22 @@ void PosVelEstimator::run(){
         _P.block(0, 0, 2, 2) /= double(10);
     }
 
-    _robot->com_height = _xhat(2, 0);
-    _robot->com_velocity[0] = _xhat(3, 0);
-    _robot->com_velocity[1] = _xhat(4, 0);
-    _robot->com_velocity[2] = _xhat(5, 0);
-    _robot->com_position[0] = _xhat(0, 0);
-    _robot->com_position[1] = _xhat(1, 0);
-    _robot->com_position[2] = _xhat(2, 0);
+    // transform imu state to com state in world frame
+    Eigen::VectorXd com_pos = _xhat.block(0, 0, 3, 1) + Rbod * position_offset;
+    Eigen::VectorXd com_vel = _xhat.block(3, 0, 3, 1) + Rbod * omegaBody.cross(position_offset);
+    _robot->com_height = com_pos[2];
+    _robot->com_velocity[0] = com_vel[0];
+    _robot->com_velocity[1] = com_vel[1];
+    _robot->com_velocity[2] = com_vel[2];
+    _robot->com_position[0] = com_pos[0];
+    _robot->com_position[1] = com_pos[1];
+    _robot->com_position[2] = com_pos[2];
 
-    _robot->left_foot_p[0] = _xhat(6, 0);
-    _robot->left_foot_p[1] = _xhat(7, 0);
-    _robot->left_foot_p[2] = _xhat(8, 0);
-    _robot->right_foot_p[0] = _xhat(9, 0);
-    _robot->right_foot_p[1] = _xhat(10, 0);
-    _robot->right_foot_p[2] = _xhat(11, 0);
+    // foot position in world frame
+    // _robot->left_foot_p[0] = _xhat(6, 0);
+    // _robot->left_foot_p[1] = _xhat(7, 0);
+    // _robot->left_foot_p[2] = _xhat(8, 0);
+    // _robot->right_foot_p[0] = _xhat(9, 0);
+    // _robot->right_foot_p[1] = _xhat(10, 0);
+    // _robot->right_foot_p[2] = _xhat(11, 0);
 }
