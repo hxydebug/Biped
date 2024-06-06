@@ -16,9 +16,8 @@
 #define Len2 0.24816f
 
 #define wid 0.1f
-#define detx 0.02f
-#define detz 0.14f
-#define hG 0.338f
+#define detx 0.007f
+#define detz 0.016f
 
 typedef int Leg;
 

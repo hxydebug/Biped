@@ -15,6 +15,7 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     float dt = timestep;
 
     _xhat.setZero();
+    _xhat[2] = 0.35;
     _ps.setZero();
     _vs.setZero();
     _A.setZero();
@@ -56,7 +57,9 @@ void PosVelEstimator::run(){
     double sensor_noise_zfoot = 0.001;
 
     Eigen::Vector3d position_offset;// from imu to com frame
-    position_offset.setZero();
+    position_offset[0] = -0.02845;
+    position_offset[1] = 0.0077;
+    position_offset[2] = -0.08866;
 
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
     Q.block(0, 0, 3, 3) = _Q0.block(0, 0, 3, 3) * process_noise_pimu;
@@ -81,11 +84,13 @@ void PosVelEstimator::run(){
     omegaBody[1] = _robot->omega[1];
     omegaBody[2] = _robot->omega[2];
 
-    // Rbod * acc
+    // Rbod * acc + g
     Eigen::VectorXd Body_acc;
     Body_acc.resize(3);
     Body_acc << _robot->acc[0],_robot->acc[1],_robot->acc[2];
-    Eigen::VectorXd World_acc = Rbod*Body_acc;
+    Eigen::Vector3d g;
+    g << 0, 0, -9.802;
+    Eigen::VectorXd World_acc = Rbod*Body_acc + g;
     // std::cout << "A WORLD\n" << World_acc << "\n";
 
     Eigen::Matrix<double, 2, 1> pzs = Eigen::Matrix<double, 2, 1>::Zero();

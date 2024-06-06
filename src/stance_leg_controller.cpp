@@ -82,6 +82,8 @@ stance_leg_controller::stance_leg_controller(Leg_state *bike,gait_generator *gai
   num_leg = 2;
   _desired_height.resize(3);
   _desired_height << 0,0,0.32;
+  GRF.resize(6);
+  GRF << 0,0,0,0,0,0;
 }
 
 Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
@@ -105,9 +107,9 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     dw_com << licycle->omega[0],licycle->omega[1],licycle->omega[2];
 
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
-    Eigen::Vector3d kp_p(0,0,10);
-    Eigen::Vector3d kd_p(1,1,1);
-    Eigen::Vector3d kp_w(1,1,1);
+    Eigen::Vector3d kp_p(0,0,0.1);
+    Eigen::Vector3d kd_p(0.1,0.1,0.1);
+    Eigen::Vector3d kp_w(0.05,0.05,0.05);
     Eigen::Vector3d kd_w(0.1,0.1,0.1);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
@@ -135,7 +137,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Kinematics(&l_angle,&l_position,0);
     Kinematics(&r_angle,&r_position,1);
     //foot positions in body coordinate
-    foot_positions << l_position.x+0.005, r_position.x+0.005,
+    foot_positions << l_position.x, r_position.x,
                       l_position.y, r_position.y,
                       l_position.z, r_position.z;
 
@@ -150,6 +152,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
 
     std::vector<double> force = Cmpc.ComputeContactForces(f_pd,tau_pd,m,I_wM,foot_positions_w,footcontact);
     Eigen::Map<Eigen::VectorXd> force_E(force.data(),force.size());
+    GRF = force_E;
     // std::cout<<force_E<<std::endl;
     Eigen::VectorXd l_force,r_force;
     l_force = force_E.head(3);

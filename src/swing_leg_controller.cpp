@@ -1,6 +1,6 @@
 #include "swing_leg_controller.h"
 
-float _KP = 0.03;
+float _KP = 0.05;
 float foot_clearance = 0.01;
 float desired_height = 0.345;
 float t_swing = t_stance;
@@ -61,10 +61,10 @@ void swing_leg_controller::update(float current_time){
 Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
 
   Eigen::VectorXd com_velocity(3);
-  // com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
-  // Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
-  com_velocity << 0,0,0;
-  Eigen::Matrix3d com_rotm = rpy2romatrix(0,0,0);
+  com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
+  Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
+  // com_velocity << 0,0,0;
+  // Eigen::Matrix3d com_rotm = rpy2romatrix(0,0,0);
 
   Eigen::VectorXd nowang(6);
   Eigen::VectorXd nowangV(6);
@@ -123,7 +123,7 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
       ansV.setConstant(0);
 
       // stance phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 10.0, 0.5);
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 0.0, 3);
 
     }
   

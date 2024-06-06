@@ -65,6 +65,7 @@ public:
     Eigen::VectorXd get_action(Eigen::VectorXd user_cmd);
     float desired_xspeed;
     float desired_roll;
+    Eigen::VectorXd GRF;
     
 private:
     gait_generator *_gait_generator;

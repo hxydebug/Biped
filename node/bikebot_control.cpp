@@ -32,23 +32,21 @@
 #include <sys/timerfd.h>
 #include <signal.h>
 // imu
-#define OPENZEN_CXX14
-#include "OpenZen.h"
-#include <iostream>
-
+// #define OPENZEN_CXX14
+// #include "OpenZen.h"
+// #include <iostream>
+#include <sensor_msgs/Imu.h>
+#include "geometry_msgs/Vector3Stamped.h"
 
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
 #include "gait_generator.h"
 #include "PosVelEstimator.h"
 
-using namespace zen;
 using namespace std;
 
 int socket0;
 int socket1;
-
-serial::Serial ser0;
 
 //全局变量
 char ch[64] = {0};
@@ -74,6 +72,8 @@ float esti_com_velocity[3] = {0.0,0.0,0.0};
 float esti_com_height;
 //command
 Eigen::VectorXd user_cmd;
+//yaw bias
+float yaw_bias = 0;
 
 // 互斥锁
 //leg_state
@@ -204,105 +204,38 @@ void* Can1_thread(void* args)
     return NULL;
 }
 
+void imuCallback(const sensor_msgs::ImuConstPtr &imu){
+    
+    leg_state.acc[0] = imu->linear_acceleration.x;
+    leg_state.acc[1] = imu->linear_acceleration.y;
+    leg_state.acc[2] = imu->linear_acceleration.z;
+
+    leg_state.omega[0] = imu->angular_velocity.x;
+    leg_state.omega[1] = imu->angular_velocity.y;
+    leg_state.omega[2] = imu->angular_velocity.z;
+
+    Eigen::Vector4d qua;
+    Eigen::Vector3d rpy;
+    qua << imu->orientation.w, imu->orientation.x, imu->orientation.y, imu->orientation.z;
+    quaToRpy(qua,rpy);
+    leg_state.rpy[0] = rpy[0];
+    leg_state.rpy[1] = rpy[1];
+    leg_state.rpy[2] = rpy[2] - yaw_bias;
+    imu_received = 1;
+}
+
 //imu_thread
 void* imu_thread(void* args)
 {
     cout << "imu_thread" << endl;
 
-    // enable resonable log output for OpenZen
-    ZenSetLogLevel(ZenLogLevel_Info);
+    int argc = 0;
+    ros::init(argc, NULL, "node");
+    ros::NodeHandle nh;
+    ros::Subscriber imu_sub = nh.subscribe("/imu/data",1,imuCallback);
 
-    // create OpenZen Clien
-    auto clientPair = make_client();
-    auto& clientError = clientPair.first;
-    auto& client = clientPair.second;
-
-    if (clientError) {
-        std::cout << "Cannot create OpenZen client" << std::endl;
-        return NULL;
-    }
-
-    // connect to sensor on IO System by the sensor name
-    auto sensorPair = client.obtainSensorByName("Bluetooth", "00:04:3E:6F:38:05");
-    auto& obtainError = sensorPair.first;
-    auto& sensor = sensorPair.second;
-    if (obtainError)
-    {
-        std::cout << "Cannot connect to sensor" << std::endl;
-        client.close();
-        return NULL;
-    }
-
-    // check that the sensor has an IMU component
-    auto imuPair = sensor.getAnyComponentOfType(g_zenSensorType_Imu);
-    auto& hasImu = imuPair.first;
-    auto imu = imuPair.second;
-
-    if (!hasImu)
-    {
-        std::cout << "Connected sensor has no IMU" << std::endl;
-        client.close();
-        return NULL;
-    }
-
-    // set and get current streaming frequency
-    auto error = imu.setInt32Property(ZenImuProperty_SamplingRate, 100);
-    if (error) {
-        std::cout << "Error setting streaming frequency" << std::endl;
-        client.close();
-        return NULL;
-    }
-
-    auto freqPair = imu.getInt32Property(ZenImuProperty_SamplingRate);
-    if (freqPair.first) {
-        std::cout << "Error fetching streaming frequency" << std::endl;
-        client.close();
-        return NULL;
-    }
-    std::cout << "Streaming frequency: " << freqPair.second << std::endl;
-
-    // toggle on/off of a particular data output (linAcc is not ON by default)
-    error = imu.setBoolProperty(ZenImuProperty_OutputLinearAcc, true);
-    if (error) {
-        std::cout << "Error toggling ON linear acc data output" << std::endl;
-        client.close();
-        return NULL;
-    }
-
-    // float _lastRuntime = 0;
-    // float _maxRuntime = 0;
-    // Timer t;
-    while(!shut_down)
-    {
-        // t.start();
-        auto event = client.waitForNextEvent();
-        if (event.second.component.handle == imu.component().handle) {
-            for(int i(0); i < 3; i++){
-                leg_state.acc[i] = event.second.data.imuData.linAcc[i]*9.81;// g to m/s^2
-                leg_state.omega[i] = event.second.data.imuData.w[i]*PI/180.0;// degree/s to rad/s
-                leg_state.rpy[i] = event.second.data.imuData.r[i]*PI/180.0;// degree to rad
-            }
-            
-            // std::cout << "> Lin Acceleration: \t x = " << event.second.data.imuData.linAcc[0]
-            //     << "\t y = " << event.second.data.imuData.linAcc[1]
-            //     << "\t z = " << event.second.data.imuData.linAcc[2] << std::endl;
-
-            // // depending on sensor, gyro data is outputted to g1, g2 or both
-            // // read more on https://lpresearch.bitbucket.io/openzen/latest/getting_started.html#id1
-            // std::cout << "> Raw Gyro 1: \t\t x = " << event.second.data.imuData.w[0]
-            //     << "\t y = " << event.second.data.imuData.w[1]
-            //     << "\t z = " << event.second.data.imuData.w[2] << std::endl;
-            
-            // std::cout << "> RPY: \t\t x = " << event.second.data.imuData.r[0]
-            //     << "\t y = " << event.second.data.imuData.r[1]
-            //     << "\t z = " << event.second.data.imuData.r[2] << std::endl;
-                
-        }
-        imu_received = 1;
-        // _lastRuntime = (float)t.getSeconds();
-        // _maxRuntime = std::max(_maxRuntime, _lastRuntime);
-        // cout<<"maxRuntime:"<<_maxRuntime<<endl;
-    }
+    ros::spin();
+    
     return NULL;
 }
 
@@ -568,6 +501,8 @@ void* estimator_thread(void* args)
     float timestep_length = 0.002;
     //initialize the estimator
     PosVelEstimator Estimator(&leg_state,&gait_gen,timestep_length);
+    //record yaw bias
+    yaw_bias = leg_state.rpy[2];
 
     //初始化定时器
     float _period = timestep_length;
@@ -624,7 +559,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0530/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0606/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -701,7 +636,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.45,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.35,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -735,7 +670,7 @@ int main(int argc, char **argv)
     // //腿初始化
     setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     cout<<"first step"<<endl;
-    setpoint1(0.06,0.11,-0.32);//0.04
+    setpoint1(detx,0.1,-0.31);//0.04
     cout<<"leg init finished!"<<endl;
 
     legstate_update();
@@ -745,7 +680,7 @@ int main(int argc, char **argv)
     printf("\r\n");
 
     //wait 1s
-    sleep(1);
+    sleep(3);
 
     time_t tt = time(NULL);
     strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
@@ -765,9 +700,11 @@ int main(int argc, char **argv)
         // printf("\r\n");
 
         // // // printf("\r\n");
+        cout<<stc.GRF<<endl;
+        cout<<" "<<endl;
         // sleep(1);
         // Sleep_us(200000);
-        // Sleep_us(20000);
+        Sleep_us(20000);
     }
 
     reset_motors();
@@ -807,7 +744,7 @@ void thread_setup(void){
     if (ret) {
             printf("pthread setschedpolicy failed\n");
     }
-    param.sched_priority = 49;
+    param.sched_priority = 79;
     ret = pthread_attr_setschedparam(&attr, &param);
     if (ret) {
             printf("pthread setschedparam failed\n");

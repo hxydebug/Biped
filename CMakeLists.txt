@@ -6,6 +6,8 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   serial
+  geometry_msgs
+  sensor_msgs
 )
 
 find_package(Eigen3 REQUIRED)
@@ -78,5 +80,5 @@ target_link_libraries(motor_drive PUBLIC)
 target_include_directories(motor_drive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(Biped_control node/bikebot_control.cpp)
-target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control OpenZen PosVelEstimator)
+target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)
 
