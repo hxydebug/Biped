@@ -217,7 +217,7 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu){
     quaToRpy(qua,rpy);
     leg_state.rpy[0] = rpy[0];
     leg_state.rpy[1] = rpy[1];
-    leg_state.rpy[2] = rpy[2] - yaw_bias;
+    leg_state.rpy[2] = rpy[2];
     imu_received = 1;
 }
 
@@ -274,14 +274,16 @@ void* safety_thread(void* args)
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle0 error"<<endl;
+                cout<<leg_state.cbdata[0].p<<endl;
                 print_flag = 0;
             }  
             shut_down = 1;
         }
-        if(leg_state.cbdata[1].p < -100.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
+        if(leg_state.cbdata[1].p < -120.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle1 error"<<endl;
+                cout<<leg_state.cbdata[1].p<<endl;
                 print_flag = 0;
             } 
             shut_down = 1;
@@ -290,6 +292,7 @@ void* safety_thread(void* args)
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle2 error"<<endl;
+                cout<<leg_state.cbdata[2].p<<endl;
                 print_flag = 0;
             } 
             shut_down = 1;
@@ -298,14 +301,16 @@ void* safety_thread(void* args)
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle3 error"<<endl;
+                cout<<leg_state.cbdata[3].p<<endl;
                 print_flag = 0;
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 100.0*PI/180.0) {
+        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 120.0*PI/180.0) {
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle4 error"<<endl;
+                cout<<leg_state.cbdata[4].p<<endl;
                 print_flag = 0;
             } 
             shut_down = 1;
@@ -314,6 +319,7 @@ void* safety_thread(void* args)
             reset_motors();
             if(print_flag==1) {
                 cout<<"angle5 error"<<endl;
+                cout<<leg_state.cbdata[5].p<<endl;
                 print_flag = 0;
             } 
             shut_down = 1;
@@ -498,8 +504,6 @@ void* estimator_thread(void* args)
     float timestep_length = 0.002;
     //initialize the estimator
     PosVelEstimator Estimator(&leg_state,&gait_gen,timestep_length);
-    //record yaw bias
-    yaw_bias = leg_state.rpy[2];
 
     //初始化定时器
     float _period = timestep_length;
@@ -633,7 +637,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.35,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.36,0;   //vx,vy,height,yaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -675,6 +679,10 @@ int main(int argc, char **argv)
         cb_Inf(leg_state.cbdata+i);
     }
     printf("\r\n");
+
+    //record yaw bias
+    yaw_bias = leg_state.rpy[2];
+    user_cmd[3] = yaw_bias;
 
     //wait 1s
     sleep(1);
@@ -810,17 +818,6 @@ void control_threadcreate(void){
             printf("pthread setinheritsched failed\n");
     }
     pthread_attr_getschedparam(&attr, &param);
-    cout<<"estimator_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids2[2], &attr, estimator_thread, NULL);
-    if (ret != 0){
-        cout << "estimate_pthread error: error_code=" << ret << endl;
-    }
-    // let estimator run a while
-    sleep(1);
-
-    param.sched_priority = 99;
-    ret = pthread_attr_setschedparam(&attr, &param);
-    pthread_attr_getschedparam(&attr, &param);
     cout<<"compute_grf_thread prior:"<<param.sched_priority<<endl;
     ret = pthread_create(&tids2[0], &attr, compute_foot_grf_thread, NULL);
     if (ret != 0){
@@ -834,7 +831,16 @@ void control_threadcreate(void){
     ret = pthread_create(&tids2[1], &attr, legcontrol_thread, NULL);
     if (ret != 0){
         cout << "ctr_pthread error: error_code=" << ret << endl;
-    }    
+    } 
+
+    param.sched_priority = 99;
+    ret = pthread_attr_setschedparam(&attr, &param);
+    pthread_attr_getschedparam(&attr, &param);
+    cout<<"estimator_thread prior:"<<param.sched_priority<<endl;
+    ret = pthread_create(&tids2[2], &attr, estimator_thread, NULL);
+    if (ret != 0){
+        cout << "estimate_pthread error: error_code=" << ret << endl;
+    }   
 
     param.sched_priority = 48;
     ret = pthread_attr_setschedparam(&attr, &param);

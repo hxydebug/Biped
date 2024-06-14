@@ -92,12 +92,13 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
   _desired_height << 0,0,desired_height-foot_clearance;
 
   for(int i(0);i<2;i++){
-
+    Eigen::VectorXd bias_pos = com_rotm * hip_positions[i];
+    bias_pos[2] = -bias_pos[2];
     if(_gait_generator->leg_state[i]==stance_leg || _gait_generator->leg_state[i]==Early_Contact){
 
       Eigen::VectorXd foot_target_position1 = (-hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 + _KP*
                                   (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-                                  + hip_positions[i];
+                                  + bias_pos;
 
       // from world to body frame
       Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position1;
@@ -131,7 +132,7 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
       // std::cout<<"666"<<std::endl;
       Eigen::VectorXd foot_target_position = (hip_horizontal_velocity * _gait_generator->stance_duration[i])/2 - _KP*
                                   (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-                                  + hip_positions[i];
+                                  + bias_pos;
       // foot_target_position[0]=0.2;
       // std::cout<<foot_target_position[0]<<std::endl;
 
@@ -160,7 +161,7 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
       ansV.setConstant(0);
 
       // swing phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 50.0, 1);
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 80.0, 1.5);
 
     }
     

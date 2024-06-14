@@ -95,7 +95,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Vector3d p_com_des,w_com_des,dp_com_des,dw_com_des;
     p_com_des<<0,0,user_cmd[2];//0.41~0.42
     dp_com_des<<user_cmd[0],user_cmd[1],0;
-    w_com_des<<0,0,0;
+    w_com_des<<0,0,user_cmd[3];
     dw_com_des<<0,0,0;
 
     Eigen::VectorXd p_com(3);
@@ -109,8 +109,8 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
     Eigen::Vector3d kp_p(0,0,0.1);
     Eigen::Vector3d kd_p(0.1,0.1,0.1);
-    Eigen::Vector3d kp_w(0.05,0.05,0.05);
-    Eigen::Vector3d kd_w(0.1,0.1,0.1);
+    Eigen::Vector3d kp_w(0.05,0.05,5);
+    Eigen::Vector3d kd_w(0.1,0.1,1);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
     Eigen::Matrix3d M_kd_p = kd_p.asDiagonal();
@@ -183,7 +183,7 @@ const int k3Dim = 3;
 const int num_legs = 2;
 const int action_dim_ = num_legs * k3Dim;
 const int planning_horizon = 1;
-const float kGravity = 9.81;
+const float kGravity = 9.802;
 const float kMaxScale = 10;
 const float kMinScale = 0.1;
 float body_mass = 8.5;
@@ -228,15 +228,15 @@ std::vector<double> ConvexMpc::ComputeContactForces(
     A_mat.block<3,3>(0,3)=Eigen::MatrixXd::Identity(3, 3);
     A_mat.block<3,3>(3,0)=lf_X;
     A_mat.block<3,3>(3,3)=rf_X;
-    float g = 9.81;
+    float g = 9.802;
     Eigen::Vector3d g_acc(0,0,g);
     B_mat << m*(f_pd+g_acc),I_wM*tau_pd;
 
     //QP
     Eigen::VectorXd L(6);
-    L << 1,1,10,120,1,1;
+    L << 0.1,0.1,0.1,0.1,0.1,0.1;
     Eigen::MatrixXd L_M = L.asDiagonal();
-    Eigen::MatrixXd W = 0.001*Eigen::MatrixXd::Identity(6, 6);
+    Eigen::MatrixXd W = 0.2*Eigen::MatrixXd::Identity(6, 6);
     Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);
 
     Eigen::MatrixXd Hd = 2*(A_mat.transpose()*L_M*A_mat + W);

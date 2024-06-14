@@ -99,7 +99,10 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		gait_generate->update(timer);
 		
 		// ground reaction force calculate    ***** it can be put in another pthread *****
-		stc_tau.setConstant(0);
+		if (timer < 0.4){
+			stc_tau.setConstant(0);
+		}
+		// stc_tau.setConstant(0);
 
 		// position controller
 		swctr->update(timer);
