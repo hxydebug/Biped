@@ -637,11 +637,14 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.36,0;   //vx,vy,height,yaw
+    user_cmd << 0,0,0.37,0;   //vx,vy,height,yaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
     leg_state.com_velocity[2] = 0;
+    leg_state.omega_world[0] = 0;
+    leg_state.omega_world[1] = 0;
+    leg_state.omega_world[2] = 0;
 
     //初始化can0，can1
     CAN_init();

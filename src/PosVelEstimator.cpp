@@ -78,10 +78,11 @@ void PosVelEstimator::run(){
     // rotation matrix from body to world
     Eigen::Matrix3d Rbod = rpy2romatrix(_robot->rpy[0],_robot->rpy[1],_robot->rpy[2]);
     // angular velocity in imu frame
-    Eigen::Vector3d omegaBody;
+    Eigen::Vector3d omegaBody, omegaWorld;
     omegaBody[0] = _robot->omega[0];
     omegaBody[1] = _robot->omega[1];
     omegaBody[2] = _robot->omega[2];
+    omegaWorld = Rbod*omegaBody;
 
     // Rbod * acc + g
     Eigen::VectorXd Body_acc;
@@ -209,7 +210,9 @@ void PosVelEstimator::run(){
     _robot->com_position[0] = com_pos[0];
     _robot->com_position[1] = com_pos[1];
     _robot->com_position[2] = com_pos[2];
-
+    _robot->omega_world[0] = omegaWorld[0];
+    _robot->omega_world[1] = omegaWorld[1];
+    _robot->omega_world[2] = omegaWorld[2];
     // foot position in world frame
     // _robot->left_foot_p[0] = _xhat(6, 0);
     // _robot->left_foot_p[1] = _xhat(7, 0);

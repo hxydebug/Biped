@@ -24,6 +24,7 @@ typedef struct{
     CBData cbdata[6];
     float rpy[3];
     float omega[3];
+    float omega_world[3];
     float acc[3];
     float com_velocity[3];
     float com_position[3];
