@@ -15,7 +15,6 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     float dt = timestep;
 
     _xhat.setZero();
-    _xhat[2] = 0.35;
     _ps.setZero();
     _vs.setZero();
     _A.setZero();

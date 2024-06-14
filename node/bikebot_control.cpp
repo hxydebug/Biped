@@ -67,9 +67,6 @@ pthread_t tids2[4];
 //共享全局变量
 //leg_data
 CANMessage cbmsg[6];
-//state estimator
-float esti_com_velocity[3] = {0.0,0.0,0.0};
-float esti_com_height;
 //command
 Eigen::VectorXd user_cmd;
 //yaw bias
@@ -680,7 +677,7 @@ int main(int argc, char **argv)
     printf("\r\n");
 
     //wait 1s
-    sleep(3);
+    sleep(1);
 
     time_t tt = time(NULL);
     strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
@@ -813,6 +810,17 @@ void control_threadcreate(void){
             printf("pthread setinheritsched failed\n");
     }
     pthread_attr_getschedparam(&attr, &param);
+    cout<<"estimator_thread prior:"<<param.sched_priority<<endl;
+    ret = pthread_create(&tids2[2], &attr, estimator_thread, NULL);
+    if (ret != 0){
+        cout << "estimate_pthread error: error_code=" << ret << endl;
+    }
+    // let estimator run a while
+    sleep(1);
+
+    param.sched_priority = 99;
+    ret = pthread_attr_setschedparam(&attr, &param);
+    pthread_attr_getschedparam(&attr, &param);
     cout<<"compute_grf_thread prior:"<<param.sched_priority<<endl;
     ret = pthread_create(&tids2[0], &attr, compute_foot_grf_thread, NULL);
     if (ret != 0){
@@ -826,16 +834,7 @@ void control_threadcreate(void){
     ret = pthread_create(&tids2[1], &attr, legcontrol_thread, NULL);
     if (ret != 0){
         cout << "ctr_pthread error: error_code=" << ret << endl;
-    }
-
-    param.sched_priority = 99;
-    ret = pthread_attr_setschedparam(&attr, &param);
-    pthread_attr_getschedparam(&attr, &param);
-    cout<<"estimator_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids2[2], &attr, estimator_thread, NULL);
-    if (ret != 0){
-        cout << "estimate_pthread error: error_code=" << ret << endl;
-    }
+    }    
 
     param.sched_priority = 48;
     ret = pthread_attr_setschedparam(&attr, &param);
