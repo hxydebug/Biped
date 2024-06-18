@@ -102,7 +102,7 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
-		// stc_tau.setConstant(0);
+		stc_tau.setConstant(0);
 
 		// position controller
 		swctr->update(timer);

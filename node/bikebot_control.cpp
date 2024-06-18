@@ -281,7 +281,7 @@ void* safety_thread(void* args)
             }  
             shut_down = 1;
         }
-        if(leg_state.cbdata[1].p < -150.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
+        if(leg_state.cbdata[1].p < -130.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle1 error"<<endl;
@@ -308,7 +308,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 150.0*PI/180.0) {
+        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 130.0*PI/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle4 error"<<endl;
@@ -667,7 +667,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.36,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.35,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -970,17 +970,17 @@ void setup_motors(){
 void motor_control(Leg_command leg_cmd){
     int i;
     for(i=0;i<2;i++){
-        cmd_transfer(i+1,&L_msgs[i],0,0,0,1,leg_cmd.torque[i]);
+        cmd_transfer(i+1,&L_msgs[i],0,0,0,0,leg_cmd.torque[i]);
         can0_tx(L_msgs[i].data,i+1);
-        cmd_transfer(i+4,&R_msgs[i],0,0,0,1,leg_cmd.torque[i+3]);
+        cmd_transfer(i+4,&R_msgs[i],0,0,0,0,leg_cmd.torque[i+3]);
         can1_tx(R_msgs[i].data,i+1+bias);
         //延时
         Sleep_us(300);
 	}
     i = 2;
-    cmd_transfer(i+1,&L_msgs[i],0,0,0,1,leg_cmd.torque[i]);
+    cmd_transfer(i+1,&L_msgs[i],0,0,0,0,leg_cmd.torque[i]);
     can0_tx(L_msgs[i].data,i+1);
-    cmd_transfer(i+4,&R_msgs[i],0,0,0,1,leg_cmd.torque[i+3]);
+    cmd_transfer(i+4,&R_msgs[i],0,0,0,0,leg_cmd.torque[i+3]);
     can1_tx(R_msgs[i].data,i+1+bias);
 }
 

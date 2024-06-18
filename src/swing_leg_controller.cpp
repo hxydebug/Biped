@@ -158,21 +158,40 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
       Position foot_position = get_swing_foot_trajectory(_gait_generator->normalized_phase[i],phase_switch_foot_local_position[i],end_position);
       postarget[i] = foot_position;
 
-      //get joint[i] angles
-      Angle ans;
-      Inv_kinematics(&ans,&foot_position,i);
-      Eigen::Vector3d angs;
-      for(int j(0);j<3;j++){
-        angs[j] = ans.q[j];
-      }
+      /**********change here begin */
 
-      //get joint[i] anglesV
-      Eigen::Vector3d ansV;
-      // ansV = calcu_Jaco(legpos[i],i).inverse()*dP;
-      ansV.setConstant(0);
 
-      // swing phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 100.0, 0.5);
+      Eigen::Vector3d Current_positionVector,Desired_positionVector;
+      Desired_positionVector << foot_position.x,foot_position.y,foot_position.z;
+      // get current position
+      Position Current_positionxyz = getFootPositionInBaswFrame(nowang,i);
+      Current_positionVector << Current_positionxyz.x,Current_positionxyz.y,Current_positionxyz.z;
+      // get current velocity
+      Eigen::Vector3d Current_velocityVector = calcu_Jaco(legpos[i],i)*legvel[i];
+      // get virtual force
+      // Eigen::Vector3d pV;
+      // pV.setConstant(0);
+      Eigen::Vector3d virtualForce = pd_tau(Current_positionVector,Current_velocityVector,Desired_positionVector,dP,350.0,3.5);
+      motor_torque[i] = calcu_Jaco(legpos[i],i).transpose()*virtualForce;
+
+      /**********change here end */
+
+
+      // //get joint[i] angles
+      // Angle ans;
+      // Inv_kinematics(&ans,&foot_position,i);
+      // Eigen::Vector3d angs;
+      // for(int j(0);j<3;j++){
+      //   angs[j] = ans.q[j];
+      // }
+
+      // //get joint[i] anglesV
+      // Eigen::Vector3d ansV;
+      // // ansV = calcu_Jaco(legpos[i],i).inverse()*dP;
+      // ansV.setConstant(0);
+
+      // // swing phase
+      // motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 80.0, 2.5);
 
     }
     
