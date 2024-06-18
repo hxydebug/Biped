@@ -1,7 +1,7 @@
 #include "swing_leg_controller.h"
 
-float _KP = 0.05;
-float foot_clearance = 0.01;
+float _KP = 0.03;
+float foot_clearance = 0.003;
 float desired_height = 0.345;
 float t_swing = t_stance;
 Eigen::Vector3d dP;
@@ -29,8 +29,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   _desired_height << 0,0,desired_height-foot_clearance;
   angles.setConstant(0);
   action.setConstant(0);
-  hip_positions[0] << detx,wid/2+0.05,0;
-  hip_positions[1] << detx,-wid/2-0.05,0;
+  hip_positions[0] << -0.003,wid/2+0.05,0;
+  hip_positions[1] << -0.003,-wid/2-0.05,0;
 
   swing_leg_controller::set_PDGain();
 
@@ -96,43 +96,46 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
   double yaw_com = licycle->rpy[2];
   double r = wid/2 + Len0;
   Eigen::Vector3d bias_velocity[2];
-  bias_velocity[0] << -dyaw_com*r*cos(yaw_com), -dyaw_com*r*sin(yaw_com),0;
-  bias_velocity[1] << dyaw_com*r*cos(yaw_com), dyaw_com*r*sin(yaw_com),0;
+  // bias_velocity[0] << -dyaw_com*r*cos(yaw_com), -dyaw_com*r*sin(yaw_com),0;
+  // bias_velocity[1] << dyaw_com*r*cos(yaw_com), dyaw_com*r*sin(yaw_com),0;
+  bias_velocity[0].setZero();
+  bias_velocity[1].setZero();
 
   for(int i(0);i<2;i++){
     Eigen::VectorXd bias_pos = com_rotm * hip_positions[i];
     bias_pos[2] = -bias_pos[2];
     if(_gait_generator->leg_state[i]==stance_leg || _gait_generator->leg_state[i]==Early_Contact){
 
-      Eigen::VectorXd foot_target_position1 = (-(hip_horizontal_velocity+bias_velocity[i]) * _gait_generator->stance_duration[i])/2 + _KP*
-                                  (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-                                  + bias_pos;
+      // Eigen::VectorXd foot_target_position1 = (-(hip_horizontal_velocity+bias_velocity[i]) * _gait_generator->stance_duration[i])/2 + _KP*
+      //                             (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
+      //                             + bias_pos;
 
-      // from world to body frame
-      Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position1;
+      // // from world to body frame
+      // Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position1;
       
-      Position end_position1;
-      end_position1.x = foot_target_position_b[0];
-      end_position1.y = foot_target_position_b[1];
-      end_position1.z = foot_target_position_b[2];
+      // Position end_position1;
+      // end_position1.x = foot_target_position_b[0];
+      // end_position1.y = foot_target_position_b[1];
+      // end_position1.z = foot_target_position_b[2];
 
-      Position foot_position1 = get_swing_foot_trajectory1(_gait_generator->normalized_phase[i],phase_switch_foot_local_position1[i],end_position1);
-      postarget[i] = foot_position1;
+      // Position foot_position1 = get_swing_foot_trajectory1(_gait_generator->normalized_phase[i],phase_switch_foot_local_position1[i],end_position1);
+      // postarget[i] = foot_position1;
 
-      //get joint[i] angles
-      Angle ans1;
-      Inv_kinematics(&ans1,&foot_position1,i);
+      // //get joint[i] angles
+      // Angle ans1;
+      // Inv_kinematics(&ans1,&foot_position1,i);
       Eigen::Vector3d angs;
-      for(int j(0);j<3;j++){
-        angs[j] = ans1.q[j];
-      }
+      // for(int j(0);j<3;j++){
+      //   angs[j] = ans1.q[j];
+      // }
+      angs.setConstant(0);
 
       //get joint[i] anglesV
       Eigen::Vector3d ansV;
       ansV.setConstant(0);
 
       // stance phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 0.0, 3);
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 0.0, 5);
 
     }
   
@@ -169,7 +172,7 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
       ansV.setConstant(0);
 
       // swing phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 80.0, 1.5);
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 100.0, 0.5);
 
     }
     

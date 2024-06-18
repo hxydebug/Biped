@@ -50,21 +50,21 @@ void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,f
     
     //角度限制
     if(id == 1){
-        if(p < -30.0*PI/180.0) p = -30.0*PI/180.0;
+        if(p < -50.0*PI/180.0) p = -50.0*PI/180.0;
         if(p > 60.0*PI/180.0) p = 60.0*PI/180.0;
     }
     if(id == 4){
         if(p < -60.0*PI/180.0) p = -60.0*PI/180.0;
-        if(p > 30.0*PI/180.0) p = 30.0*PI/180.0;
+        if(p > 50.0*PI/180.0) p = 50.0*PI/180.0;
     }
 
     if(id == 2){
-        if(p < -100.0*PI/180.0) p = -100.0*PI/180.0;
+        if(p < -120.0*PI/180.0) p = -120.0*PI/180.0;
         if(p > 60.0*PI/180.0) p = 60.0*PI/180.0;
     }
     if(id == 5){
         if(p < -60.0*PI/180.0) p = -60.0*PI/180.0;
-        if(p > 100.0*PI/180.0) p = 100.0*PI/180.0;
+        if(p > 120.0*PI/180.0) p = 120.0*PI/180.0;
     }
     
     if(id == 3){
@@ -81,8 +81,8 @@ void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,f
     p += initial_angle_bias[i];
     
     //力矩限制
-    if(t < -24.0) t = -24.0;
-    if(t > 24.0) t = 24.0;
+    if(t < -28.0) t = -28.0;
+    if(t > 28.0) t = 28.0;
 
     int p_int = float_to_uint(p,P_MIN,P_MAX,16);
     int v_int = float_to_uint(v, V_MIN, V_MAX, 12);

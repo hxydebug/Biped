@@ -99,7 +99,7 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		gait_generate->update(timer);
 		
 		// ground reaction force calculate    ***** it can be put in another pthread *****
-		if (timer < 0.4){
+		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
 		// stc_tau.setConstant(0);
@@ -142,12 +142,12 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 
 	//torque_limit
 	for(int i(0);i<3;i++){
-		if(cmd->torque[i] < -24.0) cmd->torque[i] = -24.0;
-		if(cmd->torque[i] > 24.0) cmd->torque[i] = 24.0;
+		if(cmd->torque[i] < -28.0) cmd->torque[i] = -28.0;
+		if(cmd->torque[i] > 28.0) cmd->torque[i] = 28.0;
 	}
 	for(int i(3);i<6;i++){
-		if(cmd->torque[i] < -24.0) cmd->torque[i] = -24.0;
-		if(cmd->torque[i] > 24.0) cmd->torque[i] = 24.0;
+		if(cmd->torque[i] < -28.0) cmd->torque[i] = -28.0;
+		if(cmd->torque[i] > 28.0) cmd->torque[i] = 28.0;
 	}
 	// cout<<Tau_e<<endl;
 }

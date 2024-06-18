@@ -207,9 +207,9 @@ void PosVelEstimator::run(){
     _robot->com_velocity[0] = com_vel[0];
     _robot->com_velocity[1] = com_vel[1];
     _robot->com_velocity[2] = com_vel[2];
-    _robot->com_position[0] = com_pos[0];
-    _robot->com_position[1] = com_pos[1];
-    _robot->com_position[2] = com_pos[2];
+    // _robot->com_position[0] = com_pos[0];
+    // _robot->com_position[1] = com_pos[1];
+    // _robot->com_position[2] = com_pos[2];
     _robot->omega_world[0] = omegaWorld[0];
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];
