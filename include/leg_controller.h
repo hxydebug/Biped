@@ -27,6 +27,7 @@ public:
 	Posdiff get_error(void);
 	void set_PDGain();
 	Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
+	float timer;
 
 private:
 	Leg_state *leg;

@@ -95,8 +95,8 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Vector3d p_com_des,w_com_des,dp_com_des,dw_com_des;
     p_com_des<<0,0,user_cmd[2];//0.41~0.42
     dp_com_des<<user_cmd[0],user_cmd[1],0;
-    w_com_des<<0,0,user_cmd[3];
-    dw_com_des<<0,0,0;
+    w_com_des<<0,0,0;
+    dw_com_des<<0,0,user_cmd[3];
 
     Eigen::VectorXd p_com(3);
     Eigen::VectorXd dp_com(3);
@@ -234,7 +234,7 @@ std::vector<double> ConvexMpc::ComputeContactForces(
 
     //QP
     Eigen::VectorXd L(6);
-    L << 0.1,0.1,0.1,0.1,0.1,0.1;
+    L << 0.1,0.1,5,0.1,5,0.1;
     Eigen::MatrixXd L_M = L.asDiagonal();
     Eigen::MatrixXd W = 0.2*Eigen::MatrixXd::Identity(6, 6);
     Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);

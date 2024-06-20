@@ -63,6 +63,7 @@ Angle R_angle;
 int Iter = 500;//设置2000ms
 pthread_t tids1[4];
 pthread_t tids2[4];
+float global_time = 0;
 
 //共享全局变量
 //leg_data
@@ -85,6 +86,10 @@ Leg_command leg_cmd;
 Posdiff poserror;
 float body_v = 0.1;
 float Max_p,Max_r;
+float esti_runtime,esti_periodtime;
+float swing_runtime,swing_periodtime;
+float stc_runtime,stc_periodtime;
+float record_runtime,record_periodtime;
 Position l_leg_p;
 Position r_leg_p;
 
@@ -428,7 +433,8 @@ void* compute_foot_grf_thread(void* args)
         Max_r = _maxRuntime;
         // cout<<"_maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"_lastRuntime:"<<_lastRuntime<<endl;
-        
+        stc_runtime = _lastRuntime;
+        stc_periodtime = _lastPeriodTime;
         /// 延时
         int m = read(timerFd, &missed, sizeof(missed));
         (void)m;
@@ -486,6 +492,7 @@ void* legcontrol_thread(void* args)
         stance = gait_gen.leg_state[0];
         l_leg_p = swc.postarget[0];
         r_leg_p = swc.postarget[1];
+        global_time = l_controller.timer;
         //驱动leg执行器
         motor_control(leg_cmd);
         
@@ -513,7 +520,8 @@ void* legcontrol_thread(void* args)
         // cout<<"maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
         // cout<<"Runtime:"<<_lastRuntime<<endl;
-
+        swing_runtime = _lastRuntime;
+        swing_periodtime = _lastPeriodTime;
         // cout<<leg_state.varphi/ PI * 180.0<<endl;
         
         /// 延时
@@ -531,7 +539,7 @@ void* estimator_thread(void* args)
     cout<<"state estimator start!"<<endl;
 
     //variables
-    float timestep_length = 0.002;
+    float timestep_length = 0.004;
     //initialize the estimator
     PosVelEstimator Estimator(&leg_state,&gait_gen,timestep_length);
 
@@ -574,7 +582,8 @@ void* estimator_thread(void* args)
         // cout<<"Runtime:"<<_lastRuntime<<endl;
 
         // cout<<leg_state.varphi/ PI * 180.0<<endl;
-        
+        esti_runtime = _lastRuntime;
+        esti_periodtime = _lastPeriodTime;
         /// 延时
         int m = read(timerFd, &missed, sizeof(missed));
         (void)m;
@@ -590,7 +599,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0618/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0619/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -637,7 +646,10 @@ void* record_thread(void* args)
                 << stc_tau[3] << ", "<< stc_tau[4] << ", "<< stc_tau[5] << ", "
                 << leg_state.rpy[0] << ", "<< leg_state.rpy[1] << ", "<< leg_state.rpy[2] << ", "
                 << leg_state.com_velocity[0] << ", "<< leg_state.com_velocity[1] << ", "<< leg_state.com_velocity[2] << ", "
-                << leg_state.com_height 
+                << leg_state.com_height << ", "<< esti_runtime << ", " << esti_periodtime  << ", "
+                << swing_runtime << ", " << swing_periodtime  << ", "
+                << stc_runtime << ", " << stc_periodtime  << ", "
+                << record_runtime << ", " << record_periodtime << ", " << global_time
                 // << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
                 // << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
@@ -651,7 +663,8 @@ void* record_thread(void* args)
         _maxRuntime = std::max(_maxRuntime, _lastRuntime);
         // cout<<"maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
-
+        record_runtime = _lastRuntime;
+        record_periodtime = _lastPeriodTime;
         //延时
         int m = read(timerFd, &missed, sizeof(missed));
         (void)m;
@@ -667,7 +680,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.35,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.36,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -781,7 +794,7 @@ void thread_setup(void){
     if (ret) {
             printf("pthread setschedpolicy failed\n");
     }
-    param.sched_priority = 79;
+    param.sched_priority = 99;
     ret = pthread_attr_setschedparam(&attr, &param);
     if (ret) {
             printf("pthread setschedparam failed\n");
@@ -803,6 +816,15 @@ void thread_setup(void){
     if (ret != 0){
         cout << "pthread_create1 error: error_code=" << ret << endl;
     }
+
+    cpu_set_t mask;
+    printf("pid=%d\n", getpid());
+    CPU_ZERO(&mask);
+    CPU_SET(1, &mask);//绑定cpu1
+    pthread_setaffinity_np(tids1[0], sizeof(cpu_set_t), &mask) ;
+    pthread_setaffinity_np(tids1[1], sizeof(cpu_set_t), &mask) ;
+
+
 
     ret = pthread_create(&tids1[2], NULL, imu_thread, NULL);
     if (ret != 0){
@@ -873,6 +895,15 @@ void control_threadcreate(void){
     if (ret != 0){
         cout << "estimate_pthread error: error_code=" << ret << endl;
     }   
+
+    cpu_set_t mask;
+    printf("pid=%d\n", getpid());
+    CPU_ZERO(&mask);
+    CPU_SET(1, &mask);//绑定cpu1
+    pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
+    CPU_ZERO(&mask);
+    CPU_SET(2, &mask);//绑定cpu2
+    pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
     param.sched_priority = 48;
     ret = pthread_attr_setschedparam(&attr, &param);
@@ -968,19 +999,20 @@ void setup_motors(){
 }
 
 void motor_control(Leg_command leg_cmd){
+    float kd = 1.5;
     int i;
     for(i=0;i<2;i++){
-        cmd_transfer(i+1,&L_msgs[i],0,0,0,0,leg_cmd.torque[i]);
+        cmd_transfer(i+1,&L_msgs[i],0,0,0,kd,leg_cmd.torque[i]);
         can0_tx(L_msgs[i].data,i+1);
-        cmd_transfer(i+4,&R_msgs[i],0,0,0,0,leg_cmd.torque[i+3]);
+        cmd_transfer(i+4,&R_msgs[i],0,0,0,kd,leg_cmd.torque[i+3]);
         can1_tx(R_msgs[i].data,i+1+bias);
         //延时
         Sleep_us(300);
 	}
     i = 2;
-    cmd_transfer(i+1,&L_msgs[i],0,0,0,0,leg_cmd.torque[i]);
+    cmd_transfer(i+1,&L_msgs[i],0,0,0,kd,leg_cmd.torque[i]);
     can0_tx(L_msgs[i].data,i+1);
-    cmd_transfer(i+4,&R_msgs[i],0,0,0,0,leg_cmd.torque[i+3]);
+    cmd_transfer(i+4,&R_msgs[i],0,0,0,kd,leg_cmd.torque[i+3]);
     can1_tx(R_msgs[i].data,i+1+bias);
 }
 

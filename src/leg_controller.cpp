@@ -11,8 +11,6 @@ float bb[2][3] = {0};
 
 double rollMax = 2.0*PI/180;
 
-float timer = 0;
-
 float kp = 8;
 float kd = 0.2;
 float vel_ref = 0;
@@ -51,6 +49,8 @@ leg_controller::leg_controller(Leg_state *robot,gait_generator *gait_gen,swing_l
 	gait_generate = gait_gen;
 	swctr = swc;
 	stctr = stc;
+
+	timer = 0;
 }
 
 void leg_controller::set_PDGain(){
@@ -102,7 +102,7 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
-		stc_tau.setConstant(0);
+		// stc_tau.setConstant(0);
 
 		// position controller
 		swctr->update(timer);
