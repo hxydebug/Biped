@@ -391,7 +391,7 @@ void* compute_foot_grf_thread(void* args)
     cout<<"compute_foot_grf start!"<<endl;
 
     //初始化定时器
-    float _period = 0.0125;
+    float _period = 0.01;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -416,7 +416,7 @@ void* compute_foot_grf_thread(void* args)
 
         /********************** running begin **********************/
         //更新数据
-        legstate_update();
+        // legstate_update();
 
         float desire_v = 0.5;//0.8
         stc.desired_xspeed = desire_v;
@@ -599,7 +599,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0619/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0620/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -901,15 +901,20 @@ void control_threadcreate(void){
     CPU_ZERO(&mask);
     CPU_SET(1, &mask);//绑定cpu1
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
+
     CPU_ZERO(&mask);
     CPU_SET(2, &mask);//绑定cpu2
     pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
-    param.sched_priority = 48;
-    ret = pthread_attr_setschedparam(&attr, &param);
-    pthread_attr_getschedparam(&attr, &param);
-    cout<<"record_thread prior:"<<param.sched_priority<<endl;
-    ret = pthread_create(&tids2[3], &attr, record_thread, NULL);
+    CPU_ZERO(&mask);
+    CPU_SET(3, &mask);//绑定cpu3
+    pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
+
+    // param.sched_priority = 48;
+    // ret = pthread_attr_setschedparam(&attr, &param);
+    // pthread_attr_getschedparam(&attr, &param);
+    // cout<<"record_thread prior:"<<param.sched_priority<<endl;
+    ret = pthread_create(&tids2[3], NULL, record_thread, NULL);
     if (ret != 0){
         cout << "record_pthread error: error_code=" << ret << endl;
     }
