@@ -45,6 +45,9 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     _Q0.block(6, 6, 6, 6) = dt * Eigen::Matrix<double, 6, 6>::Identity();
     _R0.setIdentity();
 
+    position_offset[0] = -(0.02845+0.007-detx);
+    position_offset[1] = 0.0077;
+    position_offset[2] = -(0.08866+0.016-detz);
 }
 
 void PosVelEstimator::run(){
@@ -54,11 +57,6 @@ void PosVelEstimator::run(){
     double sensor_noise_pimu_rel_foot = 0.001;
     double sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
     double sensor_noise_zfoot = 0.001;
-
-    Eigen::Vector3d position_offset;// from imu to com frame
-    position_offset[0] = -0.02845;
-    position_offset[1] = 0.0077;
-    position_offset[2] = -0.08866;
 
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
     Q.block(0, 0, 3, 3) = _Q0.block(0, 0, 3, 3) * process_noise_pimu;

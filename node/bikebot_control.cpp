@@ -391,7 +391,7 @@ void* compute_foot_grf_thread(void* args)
     cout<<"compute_foot_grf start!"<<endl;
 
     //初始化定时器
-    float _period = 0.01;
+    float _period = 0.002;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -416,7 +416,7 @@ void* compute_foot_grf_thread(void* args)
 
         /********************** running begin **********************/
         //更新数据
-        // legstate_update();
+        legstate_update();
 
         float desire_v = 0.5;//0.8
         stc.desired_xspeed = desire_v;
@@ -480,7 +480,7 @@ void* legcontrol_thread(void* args)
 
         /********************** running begin **********************/
         //更新数据
-        legstate_update();
+        // legstate_update();
 
         float desire_v = 0.5;//0.8
         swc.desired_xspeed = desire_v;
@@ -599,7 +599,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0620/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0623/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -680,7 +680,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.36,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.41,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;

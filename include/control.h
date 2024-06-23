@@ -17,7 +17,7 @@
 
 #define wid 0.1f
 #define detx 0.007f
-#define detz 0.016f
+#define detz 0.046f
 
 typedef int Leg;
 

@@ -18,6 +18,7 @@ class PosVelEstimator{
 public:
     PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep);
     void run();
+    Eigen::Vector3d position_offset;// from imu to com frame
 private:
     Eigen::Matrix<double, 12, 1> _xhat;
     Eigen::Matrix<double, 6, 1> _ps;
