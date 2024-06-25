@@ -132,7 +132,7 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 
 		Tau_e << ltau, rtau;
 
-		timer += 0.002;
+		timer += 0.001;
 	}
 
 	

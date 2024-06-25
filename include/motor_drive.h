@@ -22,7 +22,7 @@
 static uint8_t reset[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFD};
 static uint8_t set_foc[8] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFC};
 
-static float initial_angle_bias[6] = {0.6189, -0.7483, -1.4127, -1.4616, 0.4526, 0.6062};
+static float initial_angle_bias[6] = {0.6224, -0.7183, -1.4127, -1.4616, 0.4526, 0.5800};
 
 typedef struct{
 	uint8_t data[8];

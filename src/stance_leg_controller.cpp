@@ -95,22 +95,22 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Vector3d p_com_des,w_com_des,dp_com_des,dw_com_des;
     p_com_des<<0,0,user_cmd[2];//0.41~0.42
     dp_com_des<<user_cmd[0],user_cmd[1],0;
-    w_com_des<<0,0,0;
+    w_com_des<<0,0.0*PI/180.0,0;
     dw_com_des<<0,0,user_cmd[3];
 
     Eigen::VectorXd p_com(3);
     Eigen::VectorXd dp_com(3);
     Eigen::VectorXd dw_com(3);
-    p_com << 0,0,licycle->com_height;
+    p_com << licycle->com_position[0],licycle->com_position[1],licycle->com_height;
     Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
     dp_com << licycle->com_velocity[0],licycle->com_velocity[1],licycle->com_velocity[2];
     dw_com << licycle->omega_world[0],licycle->omega_world[1],licycle->omega_world[2];
 
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
-    Eigen::Vector3d kp_p(0,0,20);
+    Eigen::Vector3d kp_p(8,8,20);
     Eigen::Vector3d kd_p(10,10,10);
-    Eigen::Vector3d kp_w(30,50,10);
-    Eigen::Vector3d kd_w(10,20,10);
+    Eigen::Vector3d kp_w(50,50,40);
+    Eigen::Vector3d kd_w(20,20,10);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
     Eigen::Matrix3d M_kd_p = kd_p.asDiagonal();
@@ -144,7 +144,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Matrix3d rot_matrix = com_rotm;
     foot_positions_w = rot_matrix*foot_positions;
 
-    float m = 8.6;
+    float m = 8.6;//8.6
     //I_b to I_w
     Eigen::Vector3d I_b(0.4,0.4,0.046);
     Eigen::Matrix3d I_bM = I_b.asDiagonal();
@@ -183,10 +183,10 @@ const int k3Dim = 3;
 const int num_legs = 2;
 const int action_dim_ = num_legs * k3Dim;
 const int planning_horizon = 1;
-const float kGravity = 9.802;
+const float kGravity = 9.81;
 const float kMaxScale = 10;
 const float kMinScale = 0.1;
-float body_mass = 8.6;
+float body_mass = 8.6;//8.6
 std::vector<float> foot_friction_coeffs {0.45,0.45,0.45,0.45};
 
 ConvexMpc::ConvexMpc()
@@ -228,13 +228,13 @@ std::vector<double> ConvexMpc::ComputeContactForces(
     A_mat.block<3,3>(0,3)=Eigen::MatrixXd::Identity(3, 3);
     A_mat.block<3,3>(3,0)=lf_X;
     A_mat.block<3,3>(3,3)=rf_X;
-    float g = 9.802;
+    float g = 9.81;
     Eigen::Vector3d g_acc(0,0,g);
     B_mat << m*(f_pd+g_acc),I_wM*tau_pd;
 
     //QP
     Eigen::VectorXd L(6);
-    L << 1,1,50,600,1700,1;
+    L << 10,10,50,1000,1700,700;
     Eigen::MatrixXd L_M = L.asDiagonal();
     Eigen::MatrixXd W = 0.7*Eigen::MatrixXd::Identity(6, 6);
     Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);

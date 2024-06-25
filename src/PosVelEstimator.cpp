@@ -51,8 +51,8 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
 }
 
 void PosVelEstimator::run(){
-    double process_noise_pimu = 0.02;
-    double process_noise_vimu = 0.02;
+    double process_noise_pimu = 0.005;
+    double process_noise_vimu = 0.06;
     double process_noise_pfoot = 0.002;
     double sensor_noise_pimu_rel_foot = 0.001;
     double sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
@@ -87,7 +87,7 @@ void PosVelEstimator::run(){
     Body_acc.resize(3);
     Body_acc << _robot->acc[0],_robot->acc[1],_robot->acc[2];
     Eigen::Vector3d g;
-    g << 0, 0, -9.802;
+    g << 0, 0, -9.81;
     Eigen::VectorXd World_acc = Rbod*Body_acc + g;
     // std::cout << "A WORLD\n" << World_acc << "\n";
 
@@ -205,9 +205,9 @@ void PosVelEstimator::run(){
     _robot->com_velocity[0] = com_vel[0];
     _robot->com_velocity[1] = com_vel[1];
     _robot->com_velocity[2] = com_vel[2];
-    // _robot->com_position[0] = com_pos[0];
-    // _robot->com_position[1] = com_pos[1];
-    // _robot->com_position[2] = com_pos[2];
+    _robot->com_position[0] = com_pos[0];
+    _robot->com_position[1] = com_pos[1];
+    _robot->com_position[2] = com_pos[2];
     _robot->omega_world[0] = omegaWorld[0];
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];

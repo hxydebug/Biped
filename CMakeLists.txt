@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(biped)
 
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2")
+set (CMAKE_BUILD_TYPE "Release")
+
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
@@ -82,3 +85,5 @@ target_include_directories(motor_drive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/includ
 add_executable(Biped_control node/bikebot_control.cpp)
 target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)
 
+add_executable(Calibrate node/calibrate.cpp)
+target_link_libraries(Calibrate ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)

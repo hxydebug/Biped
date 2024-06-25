@@ -391,7 +391,7 @@ void* compute_foot_grf_thread(void* args)
     cout<<"compute_foot_grf start!"<<endl;
 
     //初始化定时器
-    float _period = 0.001;
+    float _period = 0.002;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -455,7 +455,7 @@ void* legcontrol_thread(void* args)
     leg_controller l_controller(&leg_state,&gait_gen,&swc,&stc);
 
     //初始化定时器
-    float _period = 0.001;
+    float _period = 0.002;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -539,7 +539,7 @@ void* estimator_thread(void* args)
     cout<<"state estimator start!"<<endl;
 
     //variables
-    float timestep_length = 0.001;
+    float timestep_length = 0.004;
     //initialize the estimator
     PosVelEstimator Estimator(&leg_state,&gait_gen,timestep_length);
 
@@ -649,10 +649,10 @@ void* record_thread(void* args)
                 << leg_state.com_height << ", "<< esti_runtime << ", " << esti_periodtime  << ", "
                 << swing_runtime << ", " << swing_periodtime  << ", "
                 << stc_runtime << ", " << stc_periodtime  << ", "
-                << record_runtime << ", " << record_periodtime << ", " << global_time << ", "
+                << record_runtime << ", " << record_periodtime << ", " << global_time
                 // << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
+                // << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
                 // << leg_state.left_foot_p[0] << ", "<< leg_state.left_foot_p[1] << ", " << leg_state.left_foot_p[2] << ", "
                 // << leg_state.right_foot_p[0] << ", "<< leg_state.right_foot_p[1] << ", " << leg_state.right_foot_p[2]
                 << std::endl;
@@ -677,21 +677,6 @@ int main(int argc, char **argv)
 {
     cout << "main_thread" << endl;
 
-    // initial variables
-    stc_tau.setConstant(0);
-    user_cmd.resize(4);
-    user_cmd << 0,0,0.41,0;   //vx,vy,height,dyaw
-    leg_state.com_height = user_cmd[2];
-    leg_state.com_velocity[0] = 0;
-    leg_state.com_velocity[1] = 0;
-    leg_state.com_velocity[2] = 0;
-    leg_state.omega_world[0] = 0;
-    leg_state.omega_world[1] = 0;
-    leg_state.omega_world[2] = 0;
-    leg_state.com_position[0] = 0;
-    leg_state.com_position[1] = 0;
-    leg_state.com_position[2] = 0;
-
     //初始化can0，can1
     CAN_init();
     
@@ -699,66 +684,31 @@ int main(int argc, char **argv)
     thread_setup();
 
     //启动电机
-    setup_motors();
-
-    //判断leg硬件是否就绪
-    while(can0_recieved == 0 || can1_recieved == 0);
-    cout << "Can is Ready!" << endl;
-
-    sleep(1);
-
-    // reset_motors();
-    //test
-    // cmd_transfer(3,&L_msgs[2],69*PI/180.0,0,8,0.2,0);
-    // can0_tx(L_msgs[2].data,3);
-
-    legstate_update();
-    safety_det_begin = 1;
-
-    // //腿初始化
-    setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
-    cout<<"first step"<<endl;
-    setpoint1(-0.003,0.1,-0.295);//0.04
-    cout<<"leg init finished!"<<endl;
-
+    reset_motors();
     legstate_update();
     for(int i=0;i<6;i++){
         cb_Inf(leg_state.cbdata+i);
     }
-    printf("\r\n");
-
-    //infer if imu is ready
-    while(imu_received == 0);
-    cout << "Hardware is Ready!" << endl;
-    //record yaw bias
-    yaw_bias = leg_state.rpy[2];
-
-    //wait 1s
-    sleep(1);
-
-    time_t tt = time(NULL);
-    strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
-
-    control_threadcreate();    
+    printf("\r\n"); 
 
     signal(SIGINT, sighand);
 
     while(!shut_down){
 
-        // reset_motors();
-        // legstate_update();
-        // for(int i=0;i<6;i++){
-        //     cb_Inf(leg_state.cbdata+i);
-        // }
-        // // footPoint_pos_Inf();
-        // printf("\r\n");
+        reset_motors();
+        legstate_update();
+        for(int i=0;i<6;i++){
+            cb_Inf(leg_state.cbdata+i);
+        }
+        footPoint_pos_Inf();
+        printf("\r\n");
 
         // // // printf("\r\n");
-        cout<<stc.GRF<<endl;
+        cout<<leg_state.rpy[0]<<", "<<leg_state.rpy[1]<<", "<< leg_state.rpy[2]<<endl;
         cout<<" "<<endl;
         // sleep(1);
-        // Sleep_us(200000);
-        Sleep_us(20000);
+        Sleep_us(200000);
+        // Sleep_us(20000);
     }
     Sleep_us(20000);
     reset_motors();
@@ -833,11 +783,6 @@ void thread_setup(void){
     ret = pthread_create(&tids1[2], NULL, imu_thread, NULL);
     if (ret != 0){
         cout << "pthread_create2 error: error_code=" << ret << endl;
-    }
-
-    ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
     }
 
 }

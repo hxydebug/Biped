@@ -29,8 +29,8 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   _desired_height << 0,0,desired_height-foot_clearance;
   angles.setConstant(0);
   action.setConstant(0);
-  hip_positions[0] << 0.0,wid/2+0.06,0;
-  hip_positions[1] << 0.0,-wid/2-0.06,0;
+  hip_positions[0] << -0.007,wid/2+0.06,0;
+  hip_positions[1] << -0.007,-wid/2-0.06,0;
 
   swing_leg_controller::set_PDGain();
 
@@ -96,10 +96,10 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
   double yaw_com = licycle->rpy[2];
   double r = wid/2 + Len0;
   Eigen::Vector3d bias_velocity[2];
-  // bias_velocity[0] << -dyaw_com*r*cos(yaw_com), -dyaw_com*r*sin(yaw_com),0;
-  // bias_velocity[1] << dyaw_com*r*cos(yaw_com), dyaw_com*r*sin(yaw_com),0;
-  bias_velocity[0].setZero();
-  bias_velocity[1].setZero();
+  bias_velocity[0] << -dyaw_com*r*cos(yaw_com), -dyaw_com*r*sin(yaw_com),0;
+  bias_velocity[1] << dyaw_com*r*cos(yaw_com), dyaw_com*r*sin(yaw_com),0;
+  // bias_velocity[0].setZero();
+  // bias_velocity[1].setZero();
 
   // consider pitch error
   Eigen::Vector3d bias_pos1,bias_pos1_global;
