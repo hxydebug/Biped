@@ -66,6 +66,7 @@ public:
     float desired_xspeed;
     float desired_roll;
     Eigen::VectorXd GRF;
+    Eigen::Vector3d p_com_des,w_com_des;
     
 private:
     gait_generator *_gait_generator;
@@ -73,6 +74,9 @@ private:
     ConvexMpc Cmpc;
     Eigen::VectorXd _desired_height;
     int num_leg;
+    double x_com_desire;
+    double y_com_desire;
+    double yaw_com_desire;
 
 };
 

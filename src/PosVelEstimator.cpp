@@ -55,7 +55,7 @@ void PosVelEstimator::run(){
     double process_noise_vimu = 0.06;
     double process_noise_pfoot = 0.002;
     double sensor_noise_pimu_rel_foot = 0.001;
-    double sensor_noise_vimu_rel_foot = 0.1;//this can be smaller
+    double sensor_noise_vimu_rel_foot = 0.2;//this can be smaller
     double sensor_noise_zfoot = 0.001;
 
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
@@ -82,7 +82,7 @@ void PosVelEstimator::run(){
     omegaBody[2] = _robot->omega[2];
     omegaWorld = Rbod*omegaBody;
 
-    // Rbod * acc + g
+    // Rbod * acc + g 
     Eigen::VectorXd Body_acc;
     Body_acc.resize(3);
     Body_acc << _robot->acc[0],_robot->acc[1],_robot->acc[2];
@@ -212,10 +212,6 @@ void PosVelEstimator::run(){
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];
     // foot position in world frame
-    // _robot->left_foot_p[0] = _xhat(6, 0);
-    // _robot->left_foot_p[1] = _xhat(7, 0);
-    // _robot->left_foot_p[2] = _xhat(8, 0);
-    // _robot->right_foot_p[0] = _xhat(9, 0);
-    // _robot->right_foot_p[1] = _xhat(10, 0);
-    // _robot->right_foot_p[2] = _xhat(11, 0);
+    _robot->foot_p[0] = _xhat.block(6, 0, 3, 1);
+    _robot->foot_p[1] = _xhat.block(9, 0, 3, 1);
 }

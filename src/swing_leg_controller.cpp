@@ -1,6 +1,6 @@
 #include "swing_leg_controller.h"
 
-float _KP = 0.03;
+float _KP = 0.05;
 float foot_clearance = 0.01;
 float desired_height = 0.345;
 float t_swing = t_stance;
@@ -20,6 +20,7 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   phase_switch_foot_local_position[1] = getFootPositionInBaswFrame(nowang,1);
   phase_switch_foot_local_position1[0] = getFootPositionInBaswFrame(nowang,0);
   phase_switch_foot_local_position1[1] = getFootPositionInBaswFrame(nowang,1);
+  pos_com_last << licycle->com_position[0],licycle->com_position[1],0.3;
   desired_xspeed = desired_speed;
   angles.resize(6);
   _desired_height.resize(3);
@@ -31,12 +32,20 @@ swing_leg_controller::swing_leg_controller(Leg_state *bike,gait_generator *gait_
   action.setConstant(0);
   hip_positions[0] << -0.007,wid/2+0.06,0;
   hip_positions[1] << -0.007,-wid/2-0.06,0;
-
+  timer = 0;
   swing_leg_controller::set_PDGain();
 
 }
 
 void swing_leg_controller::update(float current_time){
+  timer = current_time;
+  Eigen::Vector3d com_p;
+  if (timer < 0.1){
+		com_p << licycle->com_position[0],licycle->com_position[1],0.3;
+	}
+  else {
+    com_p << licycle->com_position[0],licycle->com_position[1],licycle->com_height;
+  }
   std::vector<int> new_leg_state = _gait_generator->desired_leg_state;
   // can optimize better!
   Eigen::VectorXd nowang(6);
@@ -48,9 +57,7 @@ void swing_leg_controller::update(float current_time){
   for(int i(0);i<2;i++){
     if(new_leg_state[i]==swing_leg && new_leg_state[i] != last_leg_state[i]){
       phase_switch_foot_local_position[i] = getFootPositionInBaswFrame(nowang,i);
-    }
-    if (new_leg_state[i]==stance_leg && new_leg_state[i] != last_leg_state[i]) {
-      phase_switch_foot_local_position1[i] = getFootPositionInBaswFrame(nowang,i);
+      pos_com_last = com_p;
     }
   }
 
@@ -61,124 +68,124 @@ void swing_leg_controller::update(float current_time){
 Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
 
   Eigen::VectorXd com_velocity(3);
-  com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],0;
+  com_velocity << licycle->com_velocity[0],licycle->com_velocity[1],licycle->com_velocity[2];
   Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
+  Eigen::Vector3d omegaBody;
+  omegaBody[0] = licycle->omega[0];
+  omegaBody[1] = licycle->omega[1];
+  omegaBody[2] = licycle->omega[2];
   // com_velocity << 0,0,0;
   // Eigen::Matrix3d com_rotm = rpy2romatrix(0,0,0);
 
+  // com in world frame
+  // height (not used)
+  desired_height = user_cmd[2]-foot_clearance;
+  Eigen::Vector3d p_com;
+  if (timer < 0.1){
+		p_com << licycle->com_position[0],licycle->com_position[1],0.4;
+	}
+  else {
+    p_com << licycle->com_position[0],licycle->com_position[1],licycle->com_height;
+  }
+
+  // joint angle
   Eigen::VectorXd nowang(6);
   Eigen::VectorXd nowangV(6);
   for(int i(0);i<6;i++){
         nowang[i] = licycle->cbdata[i].p;
         nowangV[i] = licycle->cbdata[i].v;
   }
-
   Eigen::Vector3d legpos[2];
   legpos[0] = nowang.head(3);
   legpos[1] = nowang.tail(3);
   Eigen::Vector3d legvel[2];
   legvel[0] = nowangV.head(3);
   legvel[1] = nowangV.tail(3);
-
+  // torque
   Eigen::VectorXd leg_motor_torque(6);
   leg_motor_torque.setConstant(0);
   Eigen::Vector3d motor_torque[2];
-
-  // mass point velocity
-  Eigen::VectorXd hip_horizontal_velocity = com_velocity;
-  Eigen::VectorXd target_hip_horizontal_velocity(3);
-  target_hip_horizontal_velocity << user_cmd[0],user_cmd[1],0;
-  desired_height = user_cmd[2];
-  _desired_height << 0,0,desired_height-foot_clearance;
-
-  // consider angular velocity
+  // yaw
   double dyaw_com = licycle->omega_world[2];
   double yaw_com = licycle->rpy[2];
-  double r = wid/2 + Len0;
-  Eigen::Vector3d bias_velocity[2];
-  bias_velocity[0] << -dyaw_com*r*cos(yaw_com), -dyaw_com*r*sin(yaw_com),0;
-  bias_velocity[1] << dyaw_com*r*cos(yaw_com), dyaw_com*r*sin(yaw_com),0;
-  // bias_velocity[0].setZero();
-  // bias_velocity[1].setZero();
 
-  // consider pitch error
-  Eigen::Vector3d bias_pos1,bias_pos1_global;
-  bias_pos1 << 0.1*licycle->rpy[1],0,0;
-  // bias_pos1_global = com_rotm * bias_pos1;
-  // bias_pos1_global[2] = 0;
-  bias_pos1_global.setZero();
+  // velocity cmd
+  Eigen::VectorXd linear_velocity = com_velocity;
+  linear_velocity[2] = 0;
+  Eigen::VectorXd desired_linear_velocity(3);
+  // command is in the body frame
+  Eigen::Vector3d v_bd;
+  v_bd << user_cmd[0],user_cmd[1],0;
+  // make command in z is zero
+  desired_linear_velocity = com_rotm * v_bd;
+  desired_linear_velocity[2] = 0;
+  // considering rotation for foot placement
+  double desired_dw_com = user_cmd[3];
+  double feetR[2], feetInitAngle[2];
+  feetR[0] = wid/2 + Len0-0.03;
+  feetR[1] = wid/2 + Len0-0.03;
+  feetInitAngle[0] = 92.0*PI/180.0;
+  feetInitAngle[1] = -92.0*PI/180.0;
 
   for(int i(0);i<2;i++){
     Eigen::VectorXd bias_pos = com_rotm * hip_positions[i];
     bias_pos[2] = -bias_pos[2];
     if(_gait_generator->leg_state[i]==stance_leg || _gait_generator->leg_state[i]==Early_Contact){
 
-      // Eigen::VectorXd foot_target_position1 = (-(hip_horizontal_velocity+bias_velocity[i]) * _gait_generator->stance_duration[i])/2 + _KP*
-      //                             (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-      //                             + bias_pos;
-
-      // // from world to body frame
-      // Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position1;
-      
-      // Position end_position1;
-      // end_position1.x = foot_target_position_b[0];
-      // end_position1.y = foot_target_position_b[1];
-      // end_position1.z = foot_target_position_b[2];
-
-      // Position foot_position1 = get_swing_foot_trajectory1(_gait_generator->normalized_phase[i],phase_switch_foot_local_position1[i],end_position1);
-      // postarget[i] = foot_position1;
-
-      // //get joint[i] angles
-      // Angle ans1;
-      // Inv_kinematics(&ans1,&foot_position1,i);
       Eigen::Vector3d angs;
-      // for(int j(0);j<3;j++){
-      //   angs[j] = ans1.q[j];
-      // }
       angs.setConstant(0);
-
-      //get joint[i] anglesV
       Eigen::Vector3d ansV;
       ansV.setConstant(0);
-
       // stance phase
-      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 0.0, 4);
+      motor_torque[i] = pd_tau(legpos[i], legvel[i], angs, ansV, 0.0, 5);
 
     }
   
     else{
-      // std::cout<<"666"<<std::endl;
-      Eigen::VectorXd foot_target_position = ((hip_horizontal_velocity+bias_velocity[i]) * _gait_generator->stance_duration[i])/2 - _KP*
-                                  (target_hip_horizontal_velocity - hip_horizontal_velocity) - _desired_height 
-                                  + bias_pos + bias_pos1_global;
-      // foot_target_position[0]=0.2;
-      // std::cout<<foot_target_position[0]<<std::endl;
+      
+      // get desired foot placement in world frame
+      double rotation_angle_bias = 0.5 * dyaw_com * _gait_generator->stance_duration[i]
+                    + dyaw_com * (1-_gait_generator->normalized_phase[i]) * _gait_generator->swing_duration[i]
+                    + 0.015 * (dyaw_com - desired_dw_com);
+      double rotation_xpos_bias = feetR[i] * cos(yaw_com + feetInitAngle[i] + rotation_angle_bias);
+      double rotation_ypos_bias = feetR[i] * sin(yaw_com + feetInitAngle[i] + rotation_angle_bias);
+      Eigen::VectorXd foot_target_position = 0.5 * linear_velocity * _gait_generator->stance_duration[i]
+                                           + linear_velocity * (1-_gait_generator->normalized_phase[i]) * _gait_generator->swing_duration[i]
+                                           + _KP * (linear_velocity - desired_linear_velocity);
+      foot_target_position[0] += rotation_xpos_bias + p_com[0];
+      foot_target_position[1] += rotation_ypos_bias + p_com[1];
+      foot_target_position[2] = 0;
 
-      // from world to body frame
-      Eigen::VectorXd foot_target_position_b = com_rotm.transpose()*foot_target_position;
+      // get beginning foot position in world frame
+      Eigen::Vector3d foot_position_begin, foot_position_body;
+      foot_position_body << phase_switch_foot_local_position[i].x, phase_switch_foot_local_position[i].y, phase_switch_foot_local_position[i].z;
+      foot_position_begin = com_rotm * foot_position_body + pos_com_last;
+      Eigen::Vector3d foot_position_now = get_swing_foot_trajectory(_gait_generator->normalized_phase[i],foot_position_begin,foot_target_position);
 
-      Position end_position;
-      end_position.x = foot_target_position_b[0];
-      end_position.y = foot_target_position_b[1];
-      end_position.z = foot_target_position_b[2];
-
-      Position foot_position = get_swing_foot_trajectory(_gait_generator->normalized_phase[i],phase_switch_foot_local_position[i],end_position);
-      postarget[i] = foot_position;
 
       /**********change here begin */
 
-
       Eigen::Vector3d Current_positionVector,Desired_positionVector;
-      Desired_positionVector << foot_position.x,foot_position.y,foot_position.z;
+      // get desired position
+      // from world to body frame
+      Eigen::Vector3d foot_position = com_rotm.transpose() * (foot_position_now-p_com);
+      postarget[i].x = foot_position[0];
+      postarget[i].y = foot_position[1];
+      postarget[i].z = foot_position[2];
+      Desired_positionVector = foot_position;
       // get current position
       Position Current_positionxyz = getFootPositionInBaswFrame(nowang,i);
       Current_positionVector << Current_positionxyz.x,Current_positionxyz.y,Current_positionxyz.z;
+      // get desired velocity
+      // from world to body frame
+      Eigen::VectorXd cross_result = omegaBody.cross(Current_positionVector);
+      Eigen::Vector3d fV = com_rotm.transpose() * (dP-com_velocity) - cross_result;
+      veltarget[i] = fV;
       // get current velocity
       Eigen::Vector3d Current_velocityVector = calcu_Jaco(legpos[i],i)*legvel[i];
       // get virtual force
-      // Eigen::Vector3d pV;
-      // pV.setConstant(0);
-      Eigen::Vector3d virtualForce = swing_leg_controller::tau(Current_positionVector,Current_velocityVector,Desired_positionVector,dP);
+      // fV.setConstant(0);
+      Eigen::Vector3d virtualForce = swing_leg_controller::tau(Current_positionVector,Current_velocityVector,Desired_positionVector,fV);
       // pd_tau(Current_positionVector,Current_velocityVector,Desired_positionVector,dP,1000.0,15.0);
       motor_torque[i] = calcu_Jaco(legpos[i],i).transpose()*virtualForce;
 
@@ -216,8 +223,8 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
 void swing_leg_controller::set_PDGain(){
 	pGain.resize(3);
 	dGain.resize(3);
-	pGain << 1200,1200,1200;
-	dGain << 20,  20,  20;
+	pGain << 1300,1300,1300;
+	dGain << 25,  25,  25;
 
 }
 
@@ -334,6 +341,38 @@ Position get_swing_foot_trajectory(float input_phase, Position start_pos, Positi
 
   return pos;
 }
+
+Eigen::Vector3d get_swing_foot_trajectory(float input_phase, Eigen::Vector3d start_pos, Eigen::Vector3d end_pos){
+  float phase = input_phase;
+
+  Eigen::Vector3d p_x;
+  Eigen::Vector3d p_y;
+  Eigen::Vector3d p_z;
+  Eigen::Vector3d pos;
+
+  p_x = simple_cal_p(start_pos[0], end_pos[0], phase, t_swing, false);
+  p_y = simple_cal_p(start_pos[1], end_pos[1], phase, t_swing, false);
+
+  float max_clearance = 0.1;
+  float mid = std::max(end_pos[2], start_pos[2]) + max_clearance;
+
+  if (phase < 0.5) {
+    p_z = simple_cal_p(start_pos[2], mid, phase, t_swing, true);
+  }
+  else {
+    p_z = simple_cal_p(mid, end_pos[2], phase-0.5, t_swing, true);
+  }
+  pos[0] = p_x[0];
+  pos[1] = p_y[0];
+  pos[2] = p_z[0];
+
+  dP[0] = p_x[1];
+  dP[1] = p_y[1];
+  dP[2] = p_z[1];
+
+  return pos;
+}
+
 Position get_swing_foot_trajectory1(float input_phase, Position start_pos, Position end_pos){
 
   float phase = input_phase;

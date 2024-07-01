@@ -19,11 +19,11 @@ public:
     gait_generator();
     void update(float current_time);
     Eigen::Vector2d stance_duration;
+    Eigen::Vector2d swing_duration;
     Eigen::Vector2d normalized_phase;
     std::vector<int> leg_state = {0,1};
     std::vector<int> desired_leg_state = {0,0};
 private:
-    Eigen::Vector2d swing_duration;
     Eigen::Vector2d stance_dutyrate;
     float contact_detection_phase_threshold;
     std::vector<int> initial_leg_state = {0,0};

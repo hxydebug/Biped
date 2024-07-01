@@ -599,7 +599,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0623/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0626/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -620,6 +620,8 @@ void* record_thread(void* args)
     float _lastPeriodTime = 0;
     float _maxPeriod = 0;
     float _maxRuntime = 0;
+    float vel = 0;
+    float pos = 0;
 
     while(!shut_down)
     {
@@ -627,34 +629,21 @@ void* record_thread(void* args)
         _lastPeriodTime = (float)t.getSeconds();
         t.start();
 
+        Eigen::Matrix3d Rbod = rpy2romatrix(leg_state.rpy[0],leg_state.rpy[1],leg_state.rpy[2]);
+        // Rbod * acc + g
+        Eigen::VectorXd Body_acc;
+        Body_acc.resize(3);
+        Body_acc << leg_state.acc[0],leg_state.acc[1],leg_state.acc[2];
+        Eigen::Vector3d g;
+        g << 0, 0, -9.81;
+        Eigen::VectorXd World_acc = Rbod*Body_acc + g;
+        vel += World_acc[1]*_period;
+        pos += vel*_period;
+        // std::cout << "A WORLD\n" << World_acc << "\n";
+
         /*** record the data ***/
         // 朝TXT文档中写入数据
-        dataFile <<leg_cmd.torque[0] << ", " << leg_cmd.torque[1] << ", " << leg_cmd.torque[2] << ", " 
-                << leg_cmd.torque[3]<< ", " << leg_cmd.torque[4] << ", " << leg_cmd.torque[5] << ", " 
-                << leg_state.cbdata[0].p << ", " << leg_state.cbdata[1].p << ", " << leg_state.cbdata[2].p << ", " 
-                << leg_state.cbdata[3].p << ", " << leg_state.cbdata[4].p << ", " << leg_state.cbdata[5].p << ", " 
-                << leg_state.cbdata[0].v << ", " << leg_state.cbdata[1].v << ", " << leg_state.cbdata[2].v << ", " 
-                << leg_state.cbdata[3].v << ", " << leg_state.cbdata[4].v << ", " << leg_state.cbdata[5].v << ", "
-                << leg_state.cbdata[0].t << ", " << leg_state.cbdata[1].t << ", " << leg_state.cbdata[2].t << ", " 
-                << leg_state.cbdata[3].t << ", " << leg_state.cbdata[4].t << ", " << leg_state.cbdata[5].t << ", " 
-                // << poserror.error[0] << ", " << poserror.error[1] << ", " << poserror.error[2] << ", " 
-                // << poserror.error[3] << ", " << poserror.error[4] << ", " << poserror.error[5] << ", " 
-                << stance << ", "
-                << l_leg_p.x << ", "<< l_leg_p.y << ", "<< l_leg_p.z << ", "
-                << r_leg_p.x << ", "<< r_leg_p.y << ", "<< r_leg_p.z << ", "
-                << stc_tau[0] << ", "<< stc_tau[1] << ", "<< stc_tau[2] << ", "
-                << stc_tau[3] << ", "<< stc_tau[4] << ", "<< stc_tau[5] << ", "
-                << leg_state.rpy[0] << ", "<< leg_state.rpy[1] << ", "<< leg_state.rpy[2] << ", "
-                << leg_state.com_velocity[0] << ", "<< leg_state.com_velocity[1] << ", "<< leg_state.com_velocity[2] << ", "
-                << leg_state.com_height << ", "<< esti_runtime << ", " << esti_periodtime  << ", "
-                << swing_runtime << ", " << swing_periodtime  << ", "
-                << stc_runtime << ", " << stc_periodtime  << ", "
-                << record_runtime << ", " << record_periodtime << ", " << global_time
-                // << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
-                // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                // << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
-                // << leg_state.left_foot_p[0] << ", "<< leg_state.left_foot_p[1] << ", " << leg_state.left_foot_p[2] << ", "
-                // << leg_state.right_foot_p[0] << ", "<< leg_state.right_foot_p[1] << ", " << leg_state.right_foot_p[2]
+        dataFile <<World_acc[1] << ", " << vel<< ", " << pos << ", " 
                 << std::endl;
 
 
@@ -689,7 +678,12 @@ int main(int argc, char **argv)
     for(int i=0;i<6;i++){
         cb_Inf(leg_state.cbdata+i);
     }
-    printf("\r\n"); 
+    printf("\r\n");
+
+    int ret = pthread_create(&tids2[3], NULL, record_thread, NULL);
+    if (ret != 0){
+        cout << "record_pthread error: error_code=" << ret << endl;
+    }
 
     signal(SIGINT, sighand);
 

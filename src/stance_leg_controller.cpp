@@ -84,6 +84,9 @@ stance_leg_controller::stance_leg_controller(Leg_state *bike,gait_generator *gai
   _desired_height << 0,0,0.32;
   GRF.resize(6);
   GRF << 0,0,0,0,0,0;
+  x_com_desire = 0;
+  y_com_desire = 0;
+  yaw_com_desire = 0;
 }
 
 Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
@@ -91,25 +94,36 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     std::vector<int> footcontact(2);
     footcontact[0] = _gait_generator->leg_state[0];
     footcontact[1] = _gait_generator->leg_state[1];
+    Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
 
-    Eigen::Vector3d p_com_des,w_com_des,dp_com_des,dw_com_des;
-    p_com_des<<0,0,user_cmd[2];//0.41~0.42
-    dp_com_des<<user_cmd[0],user_cmd[1],0;
-    w_com_des<<0,0.0*PI/180.0,0;
+    Eigen::Vector3d dp_com_des,dw_com_des;
+    Eigen::Vector3d v_bd;
+    // command is in the body frame
+    v_bd << user_cmd[0],user_cmd[1],0;
+    dp_com_des = com_rotm * v_bd;
+    dp_com_des[2] = 0;
+
+    // integrate with velocity
+    x_com_desire +=  dp_com_des[0] * 0.001;
+    y_com_desire +=  dp_com_des[1] * 0.001;
+    p_com_des<<x_com_desire,y_com_desire,user_cmd[2];//0.41~0.42
+
     dw_com_des<<0,0,user_cmd[3];
+
+    yaw_com_desire += dw_com_des[2] * 0.001;
+    w_com_des<<0,0,yaw_com_desire;
 
     Eigen::VectorXd p_com(3);
     Eigen::VectorXd dp_com(3);
     Eigen::VectorXd dw_com(3);
     p_com << licycle->com_position[0],licycle->com_position[1],licycle->com_height;
-    Eigen::Matrix3d com_rotm = rpy2romatrix(licycle->rpy[0],licycle->rpy[1],licycle->rpy[2]);
     dp_com << licycle->com_velocity[0],licycle->com_velocity[1],licycle->com_velocity[2];
     dw_com << licycle->omega_world[0],licycle->omega_world[1],licycle->omega_world[2];
 
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
-    Eigen::Vector3d kp_p(8,8,20);
+    Eigen::Vector3d kp_p(40,40,60);
     Eigen::Vector3d kd_p(10,10,10);
-    Eigen::Vector3d kp_w(50,50,40);
+    Eigen::Vector3d kp_w(70,80,100);
     Eigen::Vector3d kd_w(20,20,10);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
@@ -187,7 +201,7 @@ const float kGravity = 9.81;
 const float kMaxScale = 10;
 const float kMinScale = 0.1;
 float body_mass = 8.6;//8.6
-std::vector<float> foot_friction_coeffs {0.45,0.45,0.45,0.45};
+std::vector<float> foot_friction_coeffs {0.4,0.4,0.4,0.4};
 
 ConvexMpc::ConvexMpc()
     :
@@ -234,7 +248,7 @@ std::vector<double> ConvexMpc::ComputeContactForces(
 
     //QP
     Eigen::VectorXd L(6);
-    L << 10,10,50,1000,1700,700;
+    L << 10,10,100,1000,2000,1600;
     Eigen::MatrixXd L_M = L.asDiagonal();
     Eigen::MatrixXd W = 0.7*Eigen::MatrixXd::Identity(6, 6);
     Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);

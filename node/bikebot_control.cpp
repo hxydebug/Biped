@@ -90,8 +90,11 @@ float esti_runtime,esti_periodtime;
 float swing_runtime,swing_periodtime;
 float stc_runtime,stc_periodtime;
 float record_runtime,record_periodtime;
+float safe_runtime,safe_periodtime;
 Position l_leg_p;
 Position r_leg_p;
+Eigen::Vector3d l_leg_v;
+Eigen::Vector3d r_leg_v;
 
 //if can start
 int bike_begin = 0;
@@ -206,7 +209,11 @@ void* Can1_thread(void* args)
 
     return NULL;
 }
-
+// void accCallback(const geometry_msgs::Vector3StampedConstPtr &free_acc){
+//     leg_state.acc[0] = free_acc->vector.x;
+//     leg_state.acc[1] = free_acc->vector.y;
+//     leg_state.acc[2] = free_acc->vector.z;
+// }
 void imuCallback(const sensor_msgs::ImuConstPtr &imu){
     
     leg_state.acc[0] = imu->linear_acceleration.x;
@@ -237,7 +244,7 @@ void* imu_thread(void* args)
     ros::init(argc, NULL, "node");
     ros::NodeHandle nh;
     ros::Subscriber imu_sub = nh.subscribe("/imu/data",1,imuCallback);
-
+    // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
     ros::spin();
     
     return NULL;
@@ -248,10 +255,9 @@ void* safety_thread(void* args)
 {
     cout << "safety_thread" << endl;
 
-    while(safety_det_begin == 0);
-
+    cout << "safety_thread start !" << endl;
     //初始化定时器
-    float _period = 0.05;
+    float _period = 0.002;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -375,7 +381,8 @@ void* safety_thread(void* args)
         _maxRuntime = std::max(_maxRuntime, _lastRuntime);
         // cout<<"maxPeriod:"<<_maxPeriod<<endl;
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
-
+        safe_runtime = _lastRuntime;
+        safe_periodtime = _lastPeriodTime;
         //延时
         int m = read(timerFd, &missed, sizeof(missed));
         (void)m;
@@ -492,6 +499,8 @@ void* legcontrol_thread(void* args)
         stance = gait_gen.leg_state[0];
         l_leg_p = swc.postarget[0];
         r_leg_p = swc.postarget[1];
+        l_leg_v = swc.veltarget[0];
+        r_leg_v = swc.veltarget[1];
         global_time = l_controller.timer;
         //驱动leg执行器
         motor_control(leg_cmd);
@@ -599,7 +608,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0623/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0626/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -652,9 +661,15 @@ void* record_thread(void* args)
                 << record_runtime << ", " << record_periodtime << ", " << global_time << ", "
                 // << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2]
-                // << leg_state.left_foot_p[0] << ", "<< leg_state.left_foot_p[1] << ", " << leg_state.left_foot_p[2] << ", "
-                // << leg_state.right_foot_p[0] << ", "<< leg_state.right_foot_p[1] << ", " << leg_state.right_foot_p[2]
+                << leg_state.com_position[0] << ", "<< leg_state.com_position[1] << ", " << leg_state.com_position[2] << ", "
+                << safe_runtime << ", " << safe_periodtime << ", "
+                << leg_state.foot_p[0][0] << ", "<< leg_state.foot_p[0][1] << ", " << leg_state.foot_p[0][2] << ", "
+                << leg_state.foot_p[1][0] << ", "<< leg_state.foot_p[1][1] << ", " << leg_state.foot_p[1][2] << ", "
+                << l_leg_v[0] << ", "<< l_leg_v[1] << ", "<< l_leg_v[2] << ", "
+                << r_leg_v[0] << ", "<< r_leg_v[1] << ", "<< r_leg_v[2] << ", "
+                << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
+                << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
+                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] 
                 << std::endl;
 
 
@@ -690,7 +705,7 @@ int main(int argc, char **argv)
     leg_state.omega_world[2] = 0;
     leg_state.com_position[0] = 0;
     leg_state.com_position[1] = 0;
-    leg_state.com_position[2] = 0;
+    leg_state.com_position[2] = user_cmd[2];
 
     //初始化can0，can1
     CAN_init();
@@ -705,6 +720,7 @@ int main(int argc, char **argv)
     while(can0_recieved == 0 || can1_recieved == 0);
     cout << "Can is Ready!" << endl;
 
+    legstate_update();
     sleep(1);
 
     // reset_motors();
@@ -712,12 +728,14 @@ int main(int argc, char **argv)
     // cmd_transfer(3,&L_msgs[2],69*PI/180.0,0,8,0.2,0);
     // can0_tx(L_msgs[2].data,3);
 
-    legstate_update();
-    safety_det_begin = 1;
-
     // //腿初始化
     setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     cout<<"first step"<<endl;
+    legstate_update();
+    int ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create3 error: error_code=" << ret << endl;
+    }
     setpoint1(-0.003,0.1,-0.295);//0.04
     cout<<"leg init finished!"<<endl;
 
@@ -754,8 +772,8 @@ int main(int argc, char **argv)
         // printf("\r\n");
 
         // // // printf("\r\n");
-        cout<<stc.GRF<<endl;
-        cout<<" "<<endl;
+        // cout<<stc.GRF<<endl;
+        // cout<<" "<<endl;
         // sleep(1);
         // Sleep_us(200000);
         Sleep_us(20000);
@@ -833,11 +851,6 @@ void thread_setup(void){
     ret = pthread_create(&tids1[2], NULL, imu_thread, NULL);
     if (ret != 0){
         cout << "pthread_create2 error: error_code=" << ret << endl;
-    }
-
-    ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
     }
 
 }

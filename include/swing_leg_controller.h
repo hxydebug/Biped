@@ -14,7 +14,10 @@ public:
     void set_PDGain();
     Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
     Position postarget[2];
+    Eigen::Vector3d veltarget[2];
+    Angle angleTarget[2];
     float desired_xspeed;
+    float timer;
 private:
     Eigen::VectorXd pGain,dGain;
     gait_generator *_gait_generator;
@@ -22,6 +25,7 @@ private:
     std::vector<int> last_leg_state = {0,0};
     Position phase_switch_foot_local_position[2];
     Position phase_switch_foot_local_position1[2];
+    Eigen::Vector3d pos_com_last;
     Eigen::VectorXd _desired_height;
     Eigen::VectorXd hip_positions[2];
     Eigen::VectorXd angles;
@@ -38,6 +42,6 @@ Eigen::VectorXd pd_tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,
 Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ);
 Position get_swing_foot_trajectory(float input_phase, Position start_pos, Position end_pos);
 Position get_swing_foot_trajectory1(float input_phase, Position start_pos, Position end_pos);
-
+Eigen::Vector3d get_swing_foot_trajectory(float input_phase, Eigen::Vector3d start_pos, Eigen::Vector3d end_pos);
 
 #endif
