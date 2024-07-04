@@ -78,7 +78,7 @@ Posdiff leg_controller::get_error(void){
 	return poserror;
 }
 
-void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd stc_tau, Eigen::VectorXd user_cmd){
+void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd stc_tau, Eigen::VectorXd user_cmd){
 
 	Eigen::VectorXd Tau_e(6);
 	// calculate the current joint angles
@@ -102,7 +102,13 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
-		// stc_tau.setConstant(0);
+		stc_tau.setConstant(0);
+
+		// initial
+		for(int i(0);i<6;i++){
+			Mcmd->cmd[i].p = 0;
+			Mcmd->cmd[i].v = 0;
+		}
 
 		// position controller
 		swctr->update(timer);
@@ -110,23 +116,56 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 
 		Eigen::VectorXd ltau(3),rtau(3);
 		if (gait_generate->leg_state[0] == stance_leg || gait_generate->leg_state[0] == Early_Contact) {
-
+			// left leg stance
 			ltau = swc_tau.head(3) + stc_tau.head(3);
-
+			Mcmd->cmd[0].kp = 0;
+			Mcmd->cmd[1].kp = 0;
+			Mcmd->cmd[2].kp = 0;
+			Mcmd->cmd[0].kd = 0;
+			Mcmd->cmd[1].kd = 0;
+			Mcmd->cmd[2].kd = 0;
 		}
 		else {
-
+			// left leg swing
 			ltau = swc_tau.head(3);
+			float Mkp = 60;
+			float Mkd = 2.5;
+			Mcmd->cmd[0].kp = Mkp;
+			Mcmd->cmd[1].kp = Mkp;
+			Mcmd->cmd[2].kp = Mkp;
+			Mcmd->cmd[0].kd = Mkd;
+			Mcmd->cmd[1].kd = Mkd;
+			Mcmd->cmd[2].kd = Mkd;
+			Mcmd->cmd[0].p = swctr->angleTarget[0].q[0];
+			Mcmd->cmd[1].p = swctr->angleTarget[0].q[1];
+			Mcmd->cmd[2].p = swctr->angleTarget[0].q[2];
 
 		}
 		if (gait_generate->leg_state[1] == stance_leg || gait_generate->leg_state[1] == Early_Contact) {
-
+			// right leg stance
 			rtau = swc_tau.tail(3) + stc_tau.tail(3);
+			Mcmd->cmd[3].kp = 0;
+			Mcmd->cmd[4].kp = 0;
+			Mcmd->cmd[5].kp = 0;
+			Mcmd->cmd[3].kd = 0;
+			Mcmd->cmd[4].kd = 0;
+			Mcmd->cmd[5].kd = 0;
 
 		}
 		else {
-
+			// right leg swing
 			rtau = swc_tau.tail(3);
+			float Mkp = 60;
+			float Mkd = 2.5;
+			Mcmd->cmd[3].kp = Mkp;
+			Mcmd->cmd[4].kp = Mkp;
+			Mcmd->cmd[5].kp = Mkp;
+			Mcmd->cmd[3].kd = Mkd;
+			Mcmd->cmd[4].kd = Mkd;
+			Mcmd->cmd[5].kd = Mkd;
+			Mcmd->cmd[3].p = swctr->angleTarget[1].q[0];
+			Mcmd->cmd[4].p = swctr->angleTarget[1].q[1];
+			Mcmd->cmd[5].p = swctr->angleTarget[1].q[2];
 
 		}
 
@@ -137,17 +176,17 @@ void leg_controller::get_action(Leg_command *cmd, int Run_mode, Eigen::VectorXd 
 
 	
 	for(int i(0);i<6;i++){
-		cmd->torque[i] = Tau_e[i];
+		Mcmd->cmd[i].t = Tau_e[i];
 	}
 
 	//torque_limit
 	for(int i(0);i<3;i++){
-		if(cmd->torque[i] < -28.0) cmd->torque[i] = -28.0;
-		if(cmd->torque[i] > 28.0) cmd->torque[i] = 28.0;
+		if(Mcmd->cmd[i].t < -28.0) Mcmd->cmd[i].t = -28.0;
+		if(Mcmd->cmd[i].t > 28.0) Mcmd->cmd[i].t = 28.0;
 	}
 	for(int i(3);i<6;i++){
-		if(cmd->torque[i] < -28.0) cmd->torque[i] = -28.0;
-		if(cmd->torque[i] > 28.0) cmd->torque[i] = 28.0;
+		if(Mcmd->cmd[i].t < -28.0) Mcmd->cmd[i].t = -28.0;
+		if(Mcmd->cmd[i].t > 28.0) Mcmd->cmd[i].t = 28.0;
 	}
 	// cout<<Tau_e<<endl;
 }

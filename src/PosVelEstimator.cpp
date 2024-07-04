@@ -9,6 +9,12 @@
 
 #include "PosVelEstimator.h"
 
+// vicon global variables
+Eigen::Vector3d COMposition_vicon;
+Eigen::Vector3d COMvelocity_vicon;
+Eigen::Vector3d position_vicon;
+Eigen::Vector3d last_position_vicon;
+
 PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep){
     _robot = robot;
     _gait_generator = gait_generator;
@@ -52,10 +58,10 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
 
 void PosVelEstimator::run(){
     double process_noise_pimu = 0.005;
-    double process_noise_vimu = 0.06;
+    double process_noise_vimu = 0.015;
     double process_noise_pfoot = 0.002;
     double sensor_noise_pimu_rel_foot = 0.001;
-    double sensor_noise_vimu_rel_foot = 0.2;//this can be smaller
+    double sensor_noise_vimu_rel_foot = 0.02;//this can be smaller
     double sensor_noise_zfoot = 0.001;
 
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
@@ -214,4 +220,26 @@ void PosVelEstimator::run(){
     // foot position in world frame
     _robot->foot_p[0] = _xhat.block(6, 0, 3, 1);
     _robot->foot_p[1] = _xhat.block(9, 0, 3, 1);
+
+    // vicon
+    position_vicon[0] = _robot->vicon_pos[0];
+    position_vicon[1] = _robot->vicon_pos[1];
+    position_vicon[2] = _robot->vicon_pos[2];
+    double offset_z = 0.23;//initial guess
+    Eigen::Vector3d position_vicon_body = Rbod.transpose()*position_vicon;
+    position_vicon_body[2] -= offset_z;
+    COMposition_vicon = Rbod*position_vicon_body;
+    Eigen::Vector3d last_position_vicon_body = Rbod.transpose()*last_position_vicon;
+    last_position_vicon_body[2] -= offset_z;
+    COMvelocity_vicon = Rbod*(position_vicon_body - last_position_vicon_body)*480.0;
+
+    _robot->vicon_COMpos[0] = COMposition_vicon[0];
+    _robot->vicon_COMpos[1] = COMposition_vicon[1];
+    _robot->vicon_COMpos[2] = COMposition_vicon[2];
+
+    _robot->vicon_COMvel[0] = COMvelocity_vicon[0];
+    _robot->vicon_COMvel[1] = COMvelocity_vicon[1];
+    _robot->vicon_COMvel[2] = COMvelocity_vicon[2];
+
+    last_position_vicon = position_vicon;
 }

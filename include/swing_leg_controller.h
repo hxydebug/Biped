@@ -15,6 +15,8 @@ public:
     Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
     Position postarget[2];
     Eigen::Vector3d veltarget[2];
+    Eigen::Vector3d foot_position_begin[2];
+    Eigen::Vector3d foot_position_body[2];
     Angle angleTarget[2];
     float desired_xspeed;
     float timer;
@@ -25,6 +27,7 @@ private:
     std::vector<int> last_leg_state = {0,0};
     Position phase_switch_foot_local_position[2];
     Position phase_switch_foot_local_position1[2];
+    Eigen::Matrix3d rotMat_last;
     Eigen::Vector3d pos_com_last;
     Eigen::VectorXd _desired_height;
     Eigen::VectorXd hip_positions[2];

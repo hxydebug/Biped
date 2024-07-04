@@ -37,6 +37,7 @@
 // #include <iostream>
 #include <sensor_msgs/Imu.h>
 #include "geometry_msgs/Vector3Stamped.h"
+#include "geometry_msgs/TransformStamped.h"
 
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
@@ -82,7 +83,7 @@ Leg_state leg_state;
 CANMessage mes;
 CANMessage L_msgs[3];
 CANMessage R_msgs[3];
-Leg_command leg_cmd;
+Motor_cmd Mcmd;
 Posdiff poserror;
 float body_v = 0.1;
 float Max_p,Max_r;
@@ -93,6 +94,8 @@ float record_runtime,record_periodtime;
 float safe_runtime,safe_periodtime;
 Position l_leg_p;
 Position r_leg_p;
+Eigen::Vector3d l_footP_begin;
+Eigen::Vector3d r_footP_begin;
 Eigen::Vector3d l_leg_v;
 Eigen::Vector3d r_leg_v;
 
@@ -105,6 +108,9 @@ static int shut_down;
 
 // if imu start
 int imu_received = 0;
+
+// if vicon start
+int vicon_received = 0;
 
 //record
 int stance = 0;
@@ -244,6 +250,38 @@ void* imu_thread(void* args)
     ros::init(argc, NULL, "node");
     ros::NodeHandle nh;
     ros::Subscriber imu_sub = nh.subscribe("/imu/data",1,imuCallback);
+    // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
+    ros::spin();
+    
+    return NULL;
+}
+
+void viconCallback(const geometry_msgs::TransformStampedConstPtr &vicon){
+    
+    leg_state.vicon_pos[0] = vicon->transform.translation.x;
+    leg_state.vicon_pos[1] = vicon->transform.translation.y;
+    leg_state.vicon_pos[2] = vicon->transform.translation.z;
+
+    Eigen::Vector4d qua;
+    Eigen::Vector3d rpy;
+    qua << vicon->transform.rotation.w, vicon->transform.rotation.x, vicon->transform.rotation.y, vicon->transform.rotation.z;
+    quaToRpy(qua,rpy);
+    leg_state.vicon_rpy[0] = rpy[0];
+    leg_state.vicon_rpy[1] = rpy[1];
+    leg_state.vicon_rpy[2] = rpy[2];
+    vicon_received = 1;
+    // cout<<rpy[2]<<endl;
+}
+
+//vicon_thread
+void* vicon_thread(void* args)
+{
+    cout << "vicon_thread" << endl;
+
+    int argc = 0;
+    ros::init(argc, NULL, "vicon_node");
+    ros::NodeHandle nh;
+    ros::Subscriber vicon_sub = nh.subscribe("/vicon/Xinyan/Xinyan",1,viconCallback);
     // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
     ros::spin();
     
@@ -495,15 +533,17 @@ void* legcontrol_thread(void* args)
         //0 initial
         //1 pd+force
 
-        l_controller.get_action(&leg_cmd,1,stc_tau,user_cmd);
+        l_controller.get_action(&Mcmd,1,stc_tau,user_cmd);
         stance = gait_gen.leg_state[0];
         l_leg_p = swc.postarget[0];
         r_leg_p = swc.postarget[1];
         l_leg_v = swc.veltarget[0];
         r_leg_v = swc.veltarget[1];
+        // l_footP_begin = swc.foot_position_body[0];
+        // r_footP_begin = swc.foot_position_body[1];
         global_time = l_controller.timer;
         //驱动leg执行器
-        motor_control(leg_cmd);
+        motor_cmd_write(Mcmd);
         
         
         //打印数据
@@ -608,7 +648,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0626/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0702/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -638,8 +678,8 @@ void* record_thread(void* args)
 
         /*** record the data ***/
         // 朝TXT文档中写入数据
-        dataFile <<leg_cmd.torque[0] << ", " << leg_cmd.torque[1] << ", " << leg_cmd.torque[2] << ", " 
-                << leg_cmd.torque[3]<< ", " << leg_cmd.torque[4] << ", " << leg_cmd.torque[5] << ", " 
+        dataFile <<Mcmd.cmd[0].t << ", " << Mcmd.cmd[1].t << ", " << Mcmd.cmd[2].t << ", " 
+                << Mcmd.cmd[3].t << ", " << Mcmd.cmd[4].t << ", " << Mcmd.cmd[5].t << ", " 
                 << leg_state.cbdata[0].p << ", " << leg_state.cbdata[1].p << ", " << leg_state.cbdata[2].p << ", " 
                 << leg_state.cbdata[3].p << ", " << leg_state.cbdata[4].p << ", " << leg_state.cbdata[5].p << ", " 
                 << leg_state.cbdata[0].v << ", " << leg_state.cbdata[1].v << ", " << leg_state.cbdata[2].v << ", " 
@@ -666,10 +706,12 @@ void* record_thread(void* args)
                 << leg_state.foot_p[0][0] << ", "<< leg_state.foot_p[0][1] << ", " << leg_state.foot_p[0][2] << ", "
                 << leg_state.foot_p[1][0] << ", "<< leg_state.foot_p[1][1] << ", " << leg_state.foot_p[1][2] << ", "
                 << l_leg_v[0] << ", "<< l_leg_v[1] << ", "<< l_leg_v[2] << ", "
-                << r_leg_v[0] << ", "<< r_leg_v[1] << ", "<< r_leg_v[2] << ", "
-                << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
-                << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
-                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] 
+                << r_leg_v[0] << ", "<< r_leg_v[1] << ", "<< r_leg_v[2] 
+                // << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
+                // << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
+                // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
+                // << l_footP_begin[0] << ", "<< l_footP_begin[1] << ", " << l_footP_begin[2] << ", "
+                // << r_footP_begin[0] << ", "<< r_footP_begin[1] << ", " << r_footP_begin[2]
                 << std::endl;
 
 
@@ -695,7 +737,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.41,0;   //vx,vy,height,dyaw
+    user_cmd << 0.5,0,0.41,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -748,6 +790,9 @@ int main(int argc, char **argv)
     //infer if imu is ready
     while(imu_received == 0);
     cout << "Hardware is Ready!" << endl;
+    //infer if vicon is ready
+    while(vicon_received == 0);
+    cout << "Hardware2 is Ready!" << endl;
     //record yaw bias
     yaw_bias = leg_state.rpy[2];
 
@@ -851,6 +896,11 @@ void thread_setup(void){
     ret = pthread_create(&tids1[2], NULL, imu_thread, NULL);
     if (ret != 0){
         cout << "pthread_create2 error: error_code=" << ret << endl;
+    }
+
+    ret = pthread_create(&tids1[3], NULL, vicon_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create3 error: error_code=" << ret << endl;
     }
 
 }
