@@ -30,10 +30,12 @@ typedef struct{
     float com_position[3];
     Eigen::Vector3d foot_p[2];
     float com_height;
+    float vicon_vel[3];
     float vicon_pos[3];
     float vicon_rpy[3];
     float vicon_COMvel[3];
     float vicon_COMpos[3];
+    float pos_offset[3];
 }  Leg_state;
 
 //定义leg_cmd结构体

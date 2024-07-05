@@ -121,6 +121,9 @@ gait_generator gait_gen;
 stance_leg_controller stc(&leg_state,&gait_gen,v_body);
 Eigen::VectorXd stc_tau(6);
 
+ros::MultiThreadedSpinner spinner(2);
+Eigen::Vector3d last_vicon_pos;
+
 static void sighand(int sig)
 {
 	shut_down = 1;
@@ -251,7 +254,7 @@ void* imu_thread(void* args)
     ros::NodeHandle nh;
     ros::Subscriber imu_sub = nh.subscribe("/imu/data",1,imuCallback);
     // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
-    ros::spin();
+    spinner.spin();
     
     return NULL;
 }
@@ -261,6 +264,14 @@ void viconCallback(const geometry_msgs::TransformStampedConstPtr &vicon){
     leg_state.vicon_pos[0] = vicon->transform.translation.x;
     leg_state.vicon_pos[1] = vicon->transform.translation.y;
     leg_state.vicon_pos[2] = vicon->transform.translation.z;
+
+    leg_state.vicon_vel[0] = (leg_state.vicon_pos[0]-last_vicon_pos[0])*150.0;
+    leg_state.vicon_vel[1] = (leg_state.vicon_pos[1]-last_vicon_pos[1])*150.0;
+    leg_state.vicon_vel[2] = (leg_state.vicon_pos[2]-last_vicon_pos[2])*150.0;
+
+    last_vicon_pos[0] = leg_state.vicon_pos[0];
+    last_vicon_pos[1] = leg_state.vicon_pos[1];
+    last_vicon_pos[2] = leg_state.vicon_pos[2];
 
     Eigen::Vector4d qua;
     Eigen::Vector3d rpy;
@@ -283,7 +294,7 @@ void* vicon_thread(void* args)
     ros::NodeHandle nh;
     ros::Subscriber vicon_sub = nh.subscribe("/vicon/Xinyan/Xinyan",1,viconCallback);
     // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
-    ros::spin();
+    spinner.spin();
     
     return NULL;
 }
@@ -648,7 +659,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0702/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0704/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -706,7 +717,11 @@ void* record_thread(void* args)
                 << leg_state.foot_p[0][0] << ", "<< leg_state.foot_p[0][1] << ", " << leg_state.foot_p[0][2] << ", "
                 << leg_state.foot_p[1][0] << ", "<< leg_state.foot_p[1][1] << ", " << leg_state.foot_p[1][2] << ", "
                 << l_leg_v[0] << ", "<< l_leg_v[1] << ", "<< l_leg_v[2] << ", "
-                << r_leg_v[0] << ", "<< r_leg_v[1] << ", "<< r_leg_v[2] 
+                << r_leg_v[0] << ", "<< r_leg_v[1] << ", "<< r_leg_v[2] << ", "
+                << leg_state.vicon_COMpos[0] << ", "<< leg_state.vicon_COMpos[1] << ", " << leg_state.vicon_COMpos[2] << ", "
+                << leg_state.vicon_COMvel[0] << ", "<< leg_state.vicon_COMvel[1] << ", " << leg_state.vicon_COMvel[2] << ", "
+                << leg_state.vicon_pos[0] << ", "<< leg_state.vicon_pos[1] << ", " << leg_state.vicon_pos[2] << ", "
+                << leg_state.vicon_rpy[0] << ", "<< leg_state.vicon_rpy[1] << ", " << leg_state.vicon_rpy[2]
                 // << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
                 // << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
@@ -737,7 +752,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0.5,0,0.41,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.41,0;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;
@@ -793,9 +808,10 @@ int main(int argc, char **argv)
     //infer if vicon is ready
     while(vicon_received == 0);
     cout << "Hardware2 is Ready!" << endl;
-    //record yaw bias
+    //record yaw bias and xy bias
     yaw_bias = leg_state.rpy[2];
-
+    leg_state.pos_offset[0] = leg_state.vicon_pos[0];
+    leg_state.pos_offset[1] = leg_state.vicon_pos[1];
     //wait 1s
     sleep(1);
 

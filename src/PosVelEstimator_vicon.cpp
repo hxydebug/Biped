@@ -42,6 +42,8 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     _C.block(9, 0, 3, 6) = C2;
     _C(12, 8) = double(1);
     _C(13, 11) = double(1);
+    _C.block(14, 0, 3, 6) = C1;
+    _C.block(17, 0, 3, 6) = C2;
     _P.setIdentity();
     _P = double(100) * _P;
     _Q0.setIdentity();
@@ -63,17 +65,21 @@ void PosVelEstimator::run(){
     double sensor_noise_pimu_rel_foot = 0.001;
     double sensor_noise_vimu_rel_foot = 0.02;//this can be smaller
     double sensor_noise_zfoot = 0.001;
+    double sensor_noise_pvicon = 0.00001;
+    double sensor_noise_vvicon = 1;
 
     Eigen::Matrix<double, 12, 12> Q = Eigen::Matrix<double, 12, 12>::Identity();
     Q.block(0, 0, 3, 3) = _Q0.block(0, 0, 3, 3) * process_noise_pimu;
     Q.block(3, 3, 3, 3) = _Q0.block(3, 3, 3, 3) * process_noise_vimu;
     Q.block(6, 6, 6, 6) = _Q0.block(6, 6, 6, 6) * process_noise_pfoot;
 
-    Eigen::Matrix<double, 14, 14> R = Eigen::Matrix<double, 14, 14>::Identity();
+    Eigen::Matrix<double, 20, 20> R = Eigen::Matrix<double, 20, 20>::Identity();
     R.block(0, 0, 6, 6) = _R0.block(0, 0, 6, 6) * sensor_noise_pimu_rel_foot;
     R.block(6, 6, 6, 6) =
         _R0.block(6, 6, 6, 6) * sensor_noise_vimu_rel_foot;
     R.block(12, 12, 2, 2) = _R0.block(12, 12, 2, 2) * sensor_noise_zfoot;
+    R.block(14, 14, 3, 3) = _R0.block(14, 14, 3, 3) * sensor_noise_pvicon;
+    R.block(17, 17, 3, 3) = _R0.block(17, 17, 3, 3) * sensor_noise_vvicon;
 
     int qindex = 0;
     int rindex1 = 0;
@@ -178,50 +184,6 @@ void PosVelEstimator::run(){
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
     }
 
-    Eigen::Matrix<double, 14, 1> y;
-    y << _ps, _vs, pzs;
-    _xhat = _A * _xhat + _B * World_acc;
-    Eigen::Matrix<double, 12, 12> At = _A.transpose();
-    Eigen::Matrix<double, 12, 12> Pm = _A * _P * At + Q;
-    Eigen::Matrix<double, 12, 14> Ct = _C.transpose();
-    Eigen::Matrix<double, 14, 1> yModel = _C * _xhat;
-    Eigen::Matrix<double, 14, 1> ey = y - yModel;
-    Eigen::Matrix<double, 14, 14> S = _C * Pm * Ct + R;
-
-    // todo compute LU only once
-    Eigen::Matrix<double, 14, 1> S_ey = S.lu().solve(ey);
-    _xhat += Pm * Ct * S_ey;
-
-    Eigen::Matrix<double, 14, 12> S_C = S.lu().solve(_C);
-    _P = (Eigen::Matrix<double, 12, 12>::Identity() - Pm * Ct * S_C) * Pm;
-
-    Eigen::Matrix<double, 12, 12> Pt = _P.transpose();
-    _P = (_P + Pt) / double(2);
-
-    if (_P.block(0, 0, 2, 2).determinant() > double(0.000001)) {
-        _P.block(0, 2, 2, 10).setZero();
-        _P.block(2, 0, 10, 2).setZero();
-        _P.block(0, 0, 2, 2) /= double(10);
-    }
-
-    // transform imu state to com state in world frame
-    Eigen::VectorXd com_pos = _xhat.block(0, 0, 3, 1) + Rbod * position_offset;
-    Eigen::VectorXd com_vel = _xhat.block(3, 0, 3, 1) + Rbod * omegaBody.cross(position_offset);
-    
-    _robot->com_velocity[0] = com_vel[0];
-    _robot->com_velocity[1] = com_vel[1];
-    _robot->com_velocity[2] = com_vel[2];
-    // _robot->com_position[0] = com_pos[0];
-    // _robot->com_position[1] = com_pos[1];
-    // _robot->com_position[2] = com_pos[2];
-    // _robot->com_height = com_pos[2];
-    _robot->omega_world[0] = omegaWorld[0];
-    _robot->omega_world[1] = omegaWorld[1];
-    _robot->omega_world[2] = omegaWorld[2];
-    // foot position in world frame
-    _robot->foot_p[0] = _xhat.block(6, 0, 3, 1);
-    _robot->foot_p[1] = _xhat.block(9, 0, 3, 1);
-
     /************************vicon begin************************ */
     position_vicon[0] = _robot->vicon_pos[0] - _robot->pos_offset[0];
     position_vicon[1] = _robot->vicon_pos[1] - _robot->pos_offset[1];
@@ -241,11 +203,9 @@ void PosVelEstimator::run(){
     _robot->vicon_COMpos[0] = COMposition_vicon[0];
     _robot->vicon_COMpos[1] = COMposition_vicon[1];
     _robot->vicon_COMpos[2] = COMposition_vicon[2];
-
-    _robot->com_position[0] = COMposition_vicon[0];
-    _robot->com_position[1] = COMposition_vicon[1];
-    _robot->com_position[2] = COMposition_vicon[2];
-    _robot->com_height = COMposition_vicon[2];
+    _pvicon[0] = COMposition_vicon[0];
+    _pvicon[1] = COMposition_vicon[1];
+    _pvicon[2] = COMposition_vicon[2];
 
     lpf_velocity[0].lpf(COMvelocity_vicon[0]);
     lpf_velocity[1].lpf(COMvelocity_vicon[1]);
@@ -253,5 +213,57 @@ void PosVelEstimator::run(){
     _robot->vicon_COMvel[0] = lpf_velocity[0].last_out;
     _robot->vicon_COMvel[1] = lpf_velocity[1].last_out;
     _robot->vicon_COMvel[2] = lpf_velocity[2].last_out;
+    _vvicon[0] = lpf_velocity[0].last_out;
+    _vvicon[1] = lpf_velocity[1].last_out;
+    _vvicon[2] = lpf_velocity[2].last_out;
+    /************************vicon end************************ */
+
+    Eigen::Matrix<double,20, 1> y;
+    y << _ps, _vs, pzs, _pvicon, _vvicon;
+    _xhat = _A * _xhat + _B * World_acc;
+    Eigen::Matrix<double, 12, 12> At = _A.transpose();
+    Eigen::Matrix<double, 12, 12> Pm = _A * _P * At + Q;
+    Eigen::Matrix<double, 12, 20> Ct = _C.transpose();
+    Eigen::Matrix<double, 20, 1> yModel = _C * _xhat;
+    Eigen::Matrix<double, 20, 1> ey = y - yModel;
+    Eigen::Matrix<double, 20, 20> S = _C * Pm * Ct + R;
+
+    // todo compute LU only once
+    Eigen::Matrix<double, 20, 1> S_ey = S.lu().solve(ey);
+    _xhat += Pm * Ct * S_ey;
+
+    Eigen::Matrix<double, 20, 12> S_C = S.lu().solve(_C);
+    _P = (Eigen::Matrix<double, 12, 12>::Identity() - Pm * Ct * S_C) * Pm;
+
+    Eigen::Matrix<double, 12, 12> Pt = _P.transpose();
+    _P = (_P + Pt) / double(2);
+
+    if (_P.block(0, 0, 2, 2).determinant() > double(0.000001)) {
+        _P.block(0, 2, 2, 10).setZero();
+        _P.block(2, 0, 10, 2).setZero();
+        _P.block(0, 0, 2, 2) /= double(10);
+    }
+
+    // transform imu state to com state in world frame
+    Eigen::VectorXd com_pos = _xhat.block(0, 0, 3, 1) + Rbod * position_offset;
+    Eigen::VectorXd com_vel = _xhat.block(3, 0, 3, 1) + Rbod * omegaBody.cross(position_offset);
+    // _robot->com_height = com_pos[2];
+    _robot->com_velocity[0] = com_vel[0];
+    _robot->com_velocity[1] = com_vel[1];
+    _robot->com_velocity[2] = com_vel[2];
+    // _robot->com_position[0] = com_pos[0];
+    // _robot->com_position[1] = com_pos[1];
+    // _robot->com_position[2] = com_pos[2];
+    _robot->omega_world[0] = omegaWorld[0];
+    _robot->omega_world[1] = omegaWorld[1];
+    _robot->omega_world[2] = omegaWorld[2];
+    // foot position in world frame
+    _robot->foot_p[0] = _xhat.block(6, 0, 3, 1);
+    _robot->foot_p[1] = _xhat.block(9, 0, 3, 1);
+
+    _robot->com_position[0] = COMposition_vicon[0];
+    _robot->com_position[1] = COMposition_vicon[1];
+    _robot->com_position[2] = COMposition_vicon[2];
+    _robot->com_height = COMposition_vicon[2];
 
 }

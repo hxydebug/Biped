@@ -13,7 +13,6 @@
 #include "gait_generator.h"
 #include "control.h"
 #include "bikebot_control.h"
-
 /// @brief Low Pass Filter 一阶低通滤波LPF
 class LPF{
 
@@ -45,20 +44,22 @@ public:
     void run();
     Eigen::Vector3d position_offset;// from imu to com frame
     LPF lpf_velocity[3] = {LPF(0.1), LPF(0.1), LPF(0.1)};
+    LPF lpf_velocity_true[3] = {LPF(0.9), LPF(0.9), LPF(0.9)};
 private:
     Eigen::Matrix<double, 12, 1> _xhat;
     Eigen::Matrix<double, 6, 1> _ps;
     Eigen::Matrix<double, 6, 1> _vs;
+    Eigen::Matrix<double, 3, 1> _pvicon;
+    Eigen::Matrix<double, 3, 1> _vvicon;
     Eigen::Matrix<double, 12, 12> _A;
     Eigen::Matrix<double, 12, 12> _Q0;
     Eigen::Matrix<double, 12, 12> _P;
-    Eigen::Matrix<double, 14, 14> _R0;
+    Eigen::Matrix<double, 20, 20> _R0;
     Eigen::Matrix<double, 12, 3> _B;
-    Eigen::Matrix<double, 14, 12> _C;
+    Eigen::Matrix<double, 20, 12> _C;
 
     gait_generator *_gait_generator;
     Leg_state *_robot;
 
 };
-
 #endif  // __POSVELESTIMATOR_H
