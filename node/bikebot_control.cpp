@@ -98,6 +98,8 @@ Eigen::Vector3d l_footP_begin;
 Eigen::Vector3d r_footP_begin;
 Eigen::Vector3d l_leg_v;
 Eigen::Vector3d r_leg_v;
+Eigen::Vector3d vel_imu;
+Eigen::Vector3d vel_kine;
 
 //if can start
 int bike_begin = 0;
@@ -629,6 +631,8 @@ void* estimator_thread(void* args)
 
         /********************** running begin **********************/
         Estimator.run();
+        vel_imu = Estimator.vel_imu;
+        vel_kine = Estimator.vel_kine;
         /********************** running end **********************/
 
         _lastRuntime = (float)t.getSeconds();
@@ -721,12 +725,12 @@ void* record_thread(void* args)
                 << leg_state.vicon_COMpos[0] << ", "<< leg_state.vicon_COMpos[1] << ", " << leg_state.vicon_COMpos[2] << ", "
                 << leg_state.vicon_COMvel[0] << ", "<< leg_state.vicon_COMvel[1] << ", " << leg_state.vicon_COMvel[2] << ", "
                 << leg_state.vicon_pos[0] << ", "<< leg_state.vicon_pos[1] << ", " << leg_state.vicon_pos[2] << ", "
-                << leg_state.vicon_rpy[0] << ", "<< leg_state.vicon_rpy[1] << ", " << leg_state.vicon_rpy[2]
+                << leg_state.vicon_rpy[0] << ", "<< leg_state.vicon_rpy[1] << ", " << leg_state.vicon_rpy[2] << ", "
                 // << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
                 // << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                // << l_footP_begin[0] << ", "<< l_footP_begin[1] << ", " << l_footP_begin[2] << ", "
-                // << r_footP_begin[0] << ", "<< r_footP_begin[1] << ", " << r_footP_begin[2]
+                << vel_kine[0] << ", "<< vel_kine[1] << ", " << vel_kine[2] << ", "
+                << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2]
                 << std::endl;
 
 

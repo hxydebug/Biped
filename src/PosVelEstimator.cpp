@@ -18,7 +18,7 @@ Eigen::Vector3d velocity_vicon;
 PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep){
     _robot = robot;
     _gait_generator = gait_generator;
-    float dt = timestep;
+    dt = timestep;
 
     _xhat.setZero();
     _ps.setZero();
@@ -103,6 +103,9 @@ void PosVelEstimator::run(){
     p0 << _xhat[0], _xhat[1], _xhat[2];
     v0 << _xhat[3], _xhat[4], _xhat[5];
 
+    // get vel measured by imu
+    vel_imu = v0 + World_acc * dt;
+
     // get leg joint position and velocity
     Eigen::VectorXd nowang(6);
     Eigen::VectorXd nowangV(6);
@@ -122,7 +125,8 @@ void PosVelEstimator::run(){
         int i1 = 3 * i;  
 
         // get foot position in world frame
-        Position posxyz = getFootPositionInBaswFrame(nowang,i);
+        // Position posxyz = getFootPositionInBaswFrame(nowang,i);
+        Position posxyz = getFootPositionInBaswFrame_L2change(nowang,i);
         Eigen::Vector3d p_rel;
         p_rel[0] = posxyz.x;
         p_rel[1] = posxyz.y;
@@ -148,8 +152,8 @@ void PosVelEstimator::run(){
         {
             phase = fmin(_gait_generator->normalized_phase[i], double(1));
         }
-        //double trust_window = double(0.25);
-        double trust_window = double(0.2);
+        double trust_window = double(0.25);
+        // double trust_window = double(0.2);
 
         if (phase < trust_window) {
         trust = phase / trust_window;
@@ -177,6 +181,8 @@ void PosVelEstimator::run(){
         _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f) - Rbod * omegaBody.cross(position_offset);
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
     }
+
+    vel_kine = _ps;
 
     Eigen::Matrix<double, 14, 1> y;
     y << _ps, _vs, pzs;

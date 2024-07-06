@@ -44,7 +44,10 @@ public:
     PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep);
     void run();
     Eigen::Vector3d position_offset;// from imu to com frame
-    LPF lpf_velocity[3] = {LPF(0.1), LPF(0.1), LPF(0.1)};
+    LPF lpf_velocity[3] = {LPF(1), LPF(1), LPF(1)};
+    Eigen::Vector3d vel_imu;
+    Eigen::Vector3d vel_kine;
+    float dt;
 private:
     Eigen::Matrix<double, 12, 1> _xhat;
     Eigen::Matrix<double, 6, 1> _ps;

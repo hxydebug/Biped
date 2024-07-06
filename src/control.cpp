@@ -70,6 +70,33 @@ void Kinematics(Angle *angle,Position *position,Leg leg){
 
 }
 
+void Kinematics_L2change(Angle *angle,Position *position,Leg leg){
+
+  float q0 = angle->q[0];
+  float q1 = -angle->q[1];
+  float q2 = -angle->q[2];
+  float L0 = Len0;
+  float L1 = Len1;
+  float L2 = Len2_change;
+  if(leg == fl){
+    position->x = -L2*(cos(q1)*sin(q2) + cos(q2)*sin(q1)) - L1*sin(q1);
+    position->y = L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)) + L1*cos(q1)*sin(q0);
+    position->z = L0*sin(q0) - L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) - L1*cos(q0)*cos(q1);
+    position->y += wid/2;
+    position->x -= detx;
+    position->z -= detz;
+  }
+  else{
+    position->x = L2*(cos(q1)*sin(q2) + cos(q2)*sin(q1)) + L1*sin(q1);
+    position->y = -L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)) + L1*cos(q1)*sin(q0);
+    position->z = -L0*sin(q0) - L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) - L1*cos(q0)*cos(q1);
+    position->y -= wid/2;
+    position->x -= detx;
+    position->z -= detz;
+  }
+
+}
+
 void Inv_kinematics(Angle *angle,Position *position,Leg leg){
 	
   float x = position->x;
@@ -172,6 +199,26 @@ Position getFootPositionInBaswFrame(Eigen::VectorXd angle, Leg leg){
   }
 
   Kinematics(&nowang,&nowposi,leg);
+  return nowposi;
+  
+}
+
+Position getFootPositionInBaswFrame_L2change(Eigen::VectorXd angle, Leg leg){
+  auto pos = angle;
+  Position nowposi;
+  Angle nowang;
+  if(leg == l_leg){
+    for(int i(0);i<3;i++){
+        nowang.q[i] = pos[i];
+    }
+  }
+  else{
+    for(int i(0);i<3;i++){
+        nowang.q[i] = pos[i+3];
+    }
+  }
+
+  Kinematics_L2change(&nowang,&nowposi,leg);
   return nowposi;
   
 }
