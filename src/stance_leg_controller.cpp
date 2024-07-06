@@ -123,8 +123,8 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
     Eigen::Vector3d kp_p(40,40,60);
     Eigen::Vector3d kd_p(10,10,10);
-    Eigen::Vector3d kp_w(70,80,100);
-    Eigen::Vector3d kd_w(20,20,10);
+    Eigen::Vector3d kp_w(40,40,60);
+    Eigen::Vector3d kd_w(10,10,10);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();
     Eigen::Matrix3d M_kd_p = kd_p.asDiagonal();
@@ -248,7 +248,7 @@ std::vector<double> ConvexMpc::ComputeContactForces(
 
     //QP
     Eigen::VectorXd L(6);
-    L << 10,10,100,1000,2000,1600;
+    L << 10,10,100,1200,2000,1700;
     Eigen::MatrixXd L_M = L.asDiagonal();
     Eigen::MatrixXd W = 0.7*Eigen::MatrixXd::Identity(6, 6);
     Eigen::MatrixXd M = 1*Eigen::MatrixXd::Identity(6, 6);

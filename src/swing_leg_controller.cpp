@@ -150,8 +150,8 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
   double feetR[2], feetInitAngle[2];
   feetR[0] = wid/2 + Len0-0.03;
   feetR[1] = wid/2 + Len0-0.03;
-  feetInitAngle[0] = 92.0*PI/180.0;
-  feetInitAngle[1] = -92.0*PI/180.0;
+  feetInitAngle[0] = 95.0*PI/180.0;
+  feetInitAngle[1] = -95.0*PI/180.0;
 
   for(int i(0);i<2;i++){
     Eigen::VectorXd bias_pos = hip_positions[i];

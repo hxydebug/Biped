@@ -54,6 +54,8 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     position_offset[0] = -(0.02845+0.007-detx);
     position_offset[1] = 0.0077;
     position_offset[2] = -(0.08866+0.016-detz);
+
+    vel_imu.setZero();
 }
 
 void PosVelEstimator::run(){
@@ -104,7 +106,7 @@ void PosVelEstimator::run(){
     v0 << _xhat[3], _xhat[4], _xhat[5];
 
     // get vel measured by imu
-    vel_imu = v0 + World_acc * dt;
+    vel_imu += World_acc * dt;
 
     // get leg joint position and velocity
     Eigen::VectorXd nowang(6);
@@ -180,9 +182,8 @@ void PosVelEstimator::run(){
         _ps.segment(i1, 3) = -p_f - Rbod * position_offset;
         _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f) - Rbod * omegaBody.cross(position_offset);
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
+        vel_kine[i] = (-dp_f) - Rbod * omegaBody.cross(position_offset);
     }
-
-    vel_kine = _ps;
 
     Eigen::Matrix<double, 14, 1> y;
     y << _ps, _vs, pzs;
@@ -217,10 +218,10 @@ void PosVelEstimator::run(){
     _robot->com_velocity[0] = com_vel[0];
     _robot->com_velocity[1] = com_vel[1];
     _robot->com_velocity[2] = com_vel[2];
-    // _robot->com_position[0] = com_pos[0];
-    // _robot->com_position[1] = com_pos[1];
-    // _robot->com_position[2] = com_pos[2];
-    // _robot->com_height = com_pos[2];
+    _robot->com_position[0] = com_pos[0];
+    _robot->com_position[1] = com_pos[1];
+    _robot->com_position[2] = com_pos[2];
+    _robot->com_height = com_pos[2];
     _robot->omega_world[0] = omegaWorld[0];
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];
@@ -231,7 +232,7 @@ void PosVelEstimator::run(){
     /************************vicon begin************************ */
     position_vicon[0] = _robot->vicon_pos[0] - _robot->pos_offset[0];
     position_vicon[1] = _robot->vicon_pos[1] - _robot->pos_offset[1];
-    position_vicon[2] = _robot->vicon_pos[2] - 0.018;
+    position_vicon[2] = _robot->vicon_pos[2];
     velocity_vicon[0] = _robot->vicon_vel[0];
     velocity_vicon[1] = _robot->vicon_vel[1];
     velocity_vicon[2] = _robot->vicon_vel[2];
@@ -248,10 +249,10 @@ void PosVelEstimator::run(){
     _robot->vicon_COMpos[1] = COMposition_vicon[1];
     _robot->vicon_COMpos[2] = COMposition_vicon[2];
 
-    _robot->com_position[0] = COMposition_vicon[0];
-    _robot->com_position[1] = COMposition_vicon[1];
-    _robot->com_position[2] = COMposition_vicon[2];
-    _robot->com_height = COMposition_vicon[2];
+    // _robot->com_position[0] = COMposition_vicon[0];
+    // _robot->com_position[1] = COMposition_vicon[1];
+    // _robot->com_position[2] = COMposition_vicon[2];
+    // _robot->com_height = COMposition_vicon[2];
 
     lpf_velocity[0].lpf(COMvelocity_vicon[0]);
     lpf_velocity[1].lpf(COMvelocity_vicon[1]);

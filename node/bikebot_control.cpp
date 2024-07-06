@@ -99,7 +99,7 @@ Eigen::Vector3d r_footP_begin;
 Eigen::Vector3d l_leg_v;
 Eigen::Vector3d r_leg_v;
 Eigen::Vector3d vel_imu;
-Eigen::Vector3d vel_kine;
+Eigen::Vector3d vel_kine[2];
 
 //if can start
 int bike_begin = 0;
@@ -632,7 +632,8 @@ void* estimator_thread(void* args)
         /********************** running begin **********************/
         Estimator.run();
         vel_imu = Estimator.vel_imu;
-        vel_kine = Estimator.vel_kine;
+        vel_kine[0] = Estimator.vel_kine[0];
+        vel_kine[1] = Estimator.vel_kine[1];
         /********************** running end **********************/
 
         _lastRuntime = (float)t.getSeconds();
@@ -663,7 +664,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0704/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0706/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -729,7 +730,8 @@ void* record_thread(void* args)
                 // << stc.p_com_des[0] << ", "<< stc.p_com_des[1] << ", "<< stc.p_com_des[2] << ", "
                 // << stc.w_com_des[0] << ", "<< stc.w_com_des[1] << ", "<< stc.w_com_des[2] << ", "
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                << vel_kine[0] << ", "<< vel_kine[1] << ", " << vel_kine[2] << ", "
+                << vel_kine[0][0] << ", "<< vel_kine[0][1] << ", " << vel_kine[0][2] << ", "
+                << vel_kine[1][0] << ", "<< vel_kine[1][1] << ", " << vel_kine[1][2] << ", "
                 << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2]
                 << std::endl;
 
