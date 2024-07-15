@@ -734,7 +734,7 @@ void* record_thread(void* args)
                 << vel_kine[1][0] << ", "<< vel_kine[1][1] << ", " << vel_kine[1][2] << ", "
                 << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2] << ", "
                 << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
-                << stc.w_com_des[2]
+                << stc.w_com_des[2] << ", " << stc.tau_pd[0] << ", " << stc.tau_pd[1] << ", " << stc.tau_pd[2]
                 << std::endl;
 
 

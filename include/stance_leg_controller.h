@@ -68,6 +68,7 @@ public:
     Eigen::VectorXd GRF;
     Eigen::Vector3d p_com_des,w_com_des;
     Eigen::Vector3d I_error;
+    Eigen::Vector3d tau_pd;
     
 private:
     gait_generator *_gait_generator;

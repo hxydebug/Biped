@@ -88,6 +88,7 @@ stance_leg_controller::stance_leg_controller(Leg_state *bike,gait_generator *gai
   y_com_desire = 0;
   yaw_com_desire = 0;
   I_error.setZero();
+  tau_pd.setZero();
 }
 
 Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
@@ -146,7 +147,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     I_error[2] = 0;
     // std::cout<<"angle_axis:"<<w_error<<std::endl;
     Eigen::Vector3d f_pd = M_kp_p * (p_com_des-p_com) + M_kd_p * (dp_com_des-dp_com);
-    Eigen::Vector3d tau_pd = M_kp_w * w_error + M_kd_w * (dw_com_des - dw_com)+ 0.05*I_error;
+    tau_pd = M_kp_w * w_error + M_kd_w * (dw_com_des - dw_com)+ 0.05*I_error;
 
     Eigen::MatrixXd foot_positions(3,2);
     Eigen::MatrixXd foot_positions_w(3,2);
