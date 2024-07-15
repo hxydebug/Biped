@@ -239,9 +239,9 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu){
     Eigen::Vector3d rpy;
     qua << imu->orientation.w, imu->orientation.x, imu->orientation.y, imu->orientation.z;
     quaToRpy(qua,rpy);
-    leg_state.rpy[0] = rpy[0];
-    leg_state.rpy[1] = rpy[1];
-    leg_state.rpy[2] = rpy[2];
+    leg_state.vicon_rpy[0] = rpy[0];
+    leg_state.vicon_rpy[1] = rpy[1];
+    leg_state.vicon_rpy[2] = rpy[2];
     imu_received = 1;
     // cout<<rpy[2]<<endl;
 }
@@ -279,9 +279,9 @@ void viconCallback(const geometry_msgs::TransformStampedConstPtr &vicon){
     Eigen::Vector3d rpy;
     qua << vicon->transform.rotation.w, vicon->transform.rotation.x, vicon->transform.rotation.y, vicon->transform.rotation.z;
     quaToRpy(qua,rpy);
-    leg_state.vicon_rpy[0] = rpy[0];
-    leg_state.vicon_rpy[1] = rpy[1];
-    leg_state.vicon_rpy[2] = rpy[2];
+    leg_state.rpy[0] = rpy[0];
+    leg_state.rpy[1] = rpy[1];
+    leg_state.rpy[2] = rpy[2];
     vicon_received = 1;
     // cout<<rpy[2]<<endl;
 }
@@ -664,7 +664,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0706/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0714/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -732,7 +732,9 @@ void* record_thread(void* args)
                 // << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
                 << vel_kine[0][0] << ", "<< vel_kine[0][1] << ", " << vel_kine[0][2] << ", "
                 << vel_kine[1][0] << ", "<< vel_kine[1][1] << ", " << vel_kine[1][2] << ", "
-                << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2]
+                << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2] << ", "
+                << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
+                << stc.w_com_des[2]
                 << std::endl;
 
 
@@ -758,7 +760,7 @@ int main(int argc, char **argv)
     // initial variables
     stc_tau.setConstant(0);
     user_cmd.resize(4);
-    user_cmd << 0,0,0.41,0;   //vx,vy,height,dyaw
+    user_cmd << 0,0,0.41,0.1;   //vx,vy,height,dyaw
     leg_state.com_height = user_cmd[2];
     leg_state.com_velocity[0] = 0;
     leg_state.com_velocity[1] = 0;

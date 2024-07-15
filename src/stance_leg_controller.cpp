@@ -87,6 +87,7 @@ stance_leg_controller::stance_leg_controller(Leg_state *bike,gait_generator *gai
   x_com_desire = 0;
   y_com_desire = 0;
   yaw_com_desire = 0;
+  I_error.setZero();
 }
 
 Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
@@ -114,9 +115,11 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     w_com_des<<0,0,yaw_com_desire;
 
     Eigen::VectorXd p_com(3);
+    Eigen::VectorXd w_com(3);
     Eigen::VectorXd dp_com(3);
     Eigen::VectorXd dw_com(3);
     p_com << licycle->com_position[0],licycle->com_position[1],licycle->com_height;
+    w_com << licycle->rpy[0],licycle->rpy[1],licycle->rpy[2];
     dp_com << licycle->com_velocity[0],licycle->com_velocity[1],licycle->com_velocity[2];
     dw_com << licycle->omega_world[0],licycle->omega_world[1],licycle->omega_world[2];
 
@@ -133,10 +136,17 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
 
     Eigen::Matrix3d R_error = com_rotm_des * com_rotm.transpose();
     Eigen::AngleAxisd axis_angle = romatrix2AngleAxis(R_error);
-    Eigen::Vector3d w_error = axis_angle.angle()*axis_angle.axis();
+    // Eigen::Vector3d w_error = axis_angle.angle()*axis_angle.axis();
+    Eigen::Vector3d w_error = rpy2AngleAxis(w_com_des).angle()*rpy2AngleAxis(w_com_des).axis() 
+                              - rpy2AngleAxis(w_com).angle()*rpy2AngleAxis(w_com).axis();
+
+    I_error += w_error;
+    I_error[0] = 0;
+    I_error[1] = 0;
+    I_error[2] = 0;
     // std::cout<<"angle_axis:"<<w_error<<std::endl;
     Eigen::Vector3d f_pd = M_kp_p * (p_com_des-p_com) + M_kd_p * (dp_com_des-dp_com);
-    Eigen::Vector3d tau_pd = M_kp_w * w_error + M_kd_w * (dw_com_des - dw_com);
+    Eigen::Vector3d tau_pd = M_kp_w * w_error + M_kd_w * (dw_com_des - dw_com)+ 0.05*I_error;
 
     Eigen::MatrixXd foot_positions(3,2);
     Eigen::MatrixXd foot_positions_w(3,2);

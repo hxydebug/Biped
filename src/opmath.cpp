@@ -41,3 +41,11 @@ double cosy_cosp = +1.0 - 2.0 * (q.y() * q.y() + q.z() * q.z());
 yaw = atan2(siny_cosp, cosy_cosp);
 }
 
+Eigen::AngleAxisd rpy2AngleAxis(Eigen::Vector3d rpy){
+    Eigen::Vector3d ea(rpy[0],rpy[1],rpy[2]);
+    Eigen::AngleAxisd rotation_vector;
+    rotation_vector = Eigen::AngleAxisd(ea[2], Eigen::Vector3d::UnitZ()) * 
+                      Eigen::AngleAxisd(ea[1], Eigen::Vector3d::UnitY()) * 
+                      Eigen::AngleAxisd(ea[0], Eigen::Vector3d::UnitX());
+    return rotation_vector;
+}

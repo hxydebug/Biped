@@ -67,6 +67,7 @@ public:
     float desired_roll;
     Eigen::VectorXd GRF;
     Eigen::Vector3d p_com_des,w_com_des;
+    Eigen::Vector3d I_error;
     
 private:
     gait_generator *_gait_generator;
