@@ -102,7 +102,7 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
-		// stc_tau.setConstant(0);
+		stc_tau.setConstant(0);
 
 		// initial
 		for(int i(0);i<6;i++){
@@ -128,14 +128,18 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// left leg swing
 			ltau = swc_tau.head(3);
-			float Mkp = 8;
-			float Mkd = 1.0;
+			float Mkp = 0;
+			float Mkd = 0;
 			Mcmd->cmd[0].kp = Mkp;
 			Mcmd->cmd[1].kp = Mkp;
 			Mcmd->cmd[2].kp = Mkp;
 			Mcmd->cmd[0].kd = Mkd;
 			Mcmd->cmd[1].kd = Mkd;
 			Mcmd->cmd[2].kd = Mkd;
+			
+			// Mcmd->cmd[0].v = swctr->angveltarget[0][0];
+			// Mcmd->cmd[1].v = swctr->angveltarget[0][1];
+			// Mcmd->cmd[2].v = swctr->angveltarget[0][2];
 			Mcmd->cmd[0].p = swctr->angleTarget[0].q[0];
 			Mcmd->cmd[1].p = swctr->angleTarget[0].q[1];
 			Mcmd->cmd[2].p = swctr->angleTarget[0].q[2];
@@ -155,14 +159,17 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// right leg swing
 			rtau = swc_tau.tail(3);
-			float Mkp = 8;
-			float Mkd = 1.0;
+			float Mkp = 0;
+			float Mkd = 0;
 			Mcmd->cmd[3].kp = Mkp;
 			Mcmd->cmd[4].kp = Mkp;
 			Mcmd->cmd[5].kp = Mkp;
 			Mcmd->cmd[3].kd = Mkd;
 			Mcmd->cmd[4].kd = Mkd;
 			Mcmd->cmd[5].kd = Mkd;
+			// Mcmd->cmd[3].v = swctr->angveltarget[1][0];
+			// Mcmd->cmd[4].v = swctr->angveltarget[1][1];
+			// Mcmd->cmd[5].v = swctr->angveltarget[1][2];
 			Mcmd->cmd[3].p = swctr->angleTarget[1].q[0];
 			Mcmd->cmd[4].p = swctr->angleTarget[1].q[1];
 			Mcmd->cmd[5].p = swctr->angleTarget[1].q[2];

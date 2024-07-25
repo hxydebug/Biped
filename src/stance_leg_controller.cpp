@@ -127,7 +127,7 @@ Eigen::VectorXd stance_leg_controller::get_action(Eigen::VectorXd user_cmd){
     Eigen::Matrix3d com_rotm_des = rpy2romatrix(w_com_des[0],w_com_des[1],w_com_des[2]);
     Eigen::Vector3d kp_p(40,40,60);
     Eigen::Vector3d kd_p(10,10,10);
-    Eigen::Vector3d kp_w(40,40,60);
+    Eigen::Vector3d kp_w(40,50,60);
     Eigen::Vector3d kd_w(10,10,10);
 
     Eigen::Matrix3d M_kp_p = kp_p.asDiagonal();

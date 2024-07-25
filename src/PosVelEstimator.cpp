@@ -181,7 +181,7 @@ void PosVelEstimator::run(){
 
         // add bias to transfer imu frame to com frame
         _ps.segment(i1, 3) = -p_f - Rbod * position_offset;
-        _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f) - Rbod * omegaBody.cross(position_offset);
+        _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f - Rbod * omegaBody.cross(position_offset));
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
         vel_kine[i] = (-dp_f) - Rbod * omegaBody.cross(position_offset);
     }

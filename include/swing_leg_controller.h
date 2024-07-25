@@ -15,6 +15,7 @@ public:
     Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
     Position postarget[2];
     Eigen::Vector3d veltarget[2];
+    Eigen::Vector3d angveltarget[2];
     Eigen::Vector3d foot_position_begin[2];
     Eigen::Vector3d foot_position_body[2];
     Angle angleTarget[2];
