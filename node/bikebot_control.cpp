@@ -668,7 +668,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0724/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0725/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -818,7 +818,7 @@ int main(int argc, char **argv)
     printf("\r\n");
 
     //infer if imu is ready
-    while(imu_received == 0);
+    // while(imu_received == 0);
     cout << "Hardware is Ready!" << endl;
     //infer if vicon is ready
     while(vicon_received == 0);

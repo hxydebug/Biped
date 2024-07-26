@@ -50,6 +50,7 @@ int socket0;
 int socket1;
 
 //全局变量
+float desired_joint_angle;
 char ch[64] = {0};
 Angle angle[2];
 Angle angleV[2];
@@ -516,6 +517,7 @@ void* estimator_thread(void* args)
         t.start();
 
         /********************** running begin **********************/
+        legstate_update();
         Estimator.run();
         /********************** running end **********************/
 
@@ -547,7 +549,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0703/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0725/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -594,7 +596,8 @@ void* record_thread(void* args)
         dataFile << esti_runtime << ", " << esti_periodtime << ", " 
                 << record_runtime << ", " << record_periodtime << ", "
                 << leg_state.vicon_COMpos[0] << ", "<< leg_state.vicon_COMpos[1] << ", "<< leg_state.vicon_COMpos[2] << ", "
-                << leg_state.vicon_COMvel[0] << ", "<< leg_state.vicon_COMvel[1] << ", "<< leg_state.vicon_COMvel[2] 
+                << leg_state.vicon_COMvel[0] << ", "<< leg_state.vicon_COMvel[1] << ", "<< leg_state.vicon_COMvel[2] << ", "
+                << desired_joint_angle << ", " << leg_state.cbdata[4].p
                 << std::endl;
 
 
@@ -625,6 +628,8 @@ int main(int argc, char **argv)
 
     //启动电机
     reset_motors();
+    //启动电机
+    setup_motors();
     legstate_update();
     for(int i=0;i<6;i++){
         cb_Inf(leg_state.cbdata+i);
@@ -640,29 +645,44 @@ int main(int argc, char **argv)
     CPU_SET(2, &mask);//绑定cpu2
     pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
+    time_t tt = time(NULL);
+    strftime(ch, sizeof(ch) - 1, "%H%M", localtime(&tt));
+
     ret = pthread_create(&tids2[3], NULL, record_thread, NULL);
     if (ret != 0){
         cout << "record_pthread error: error_code=" << ret << endl;
     }
 
     signal(SIGINT, sighand);
-
+    float main_timer = 0;
+    int  flag = 1;
     while(!shut_down){
-
-        reset_motors();
-        legstate_update();
-        for(int i=0;i<6;i++){
-            cb_Inf(leg_state.cbdata+i);
+        if(main_timer>2){
+            main_timer = 0;
+            flag = -flag;
+        } 
+        
+        if(flag==1){
+            if (main_timer<=1)
+                desired_joint_angle = linear(0.0,3.0,1.0,main_timer); 
+            else
+                desired_joint_angle = 3.0;
         }
-        footPoint_pos_Inf();
-        printf("\r\n");
+        else{
+            if (main_timer<=1)
+                desired_joint_angle = linear(3.0,0.0,1.0,main_timer);
+            else
+                desired_joint_angle = 0.0;
+        }
+        int i=1;
+        cmd_transfer(i+4,&R_msgs[i],desired_joint_angle,0,150,1.0,0);
+        can1_tx(R_msgs[i].data,i+1+bias);
+        
 
-        // printf("\r\n");
-        // cout<<leg_state.rpy[0]<<", "<<leg_state.rpy[1]<<", "<< leg_state.rpy[2]<<endl;
-        // cout<<" "<<endl;
-        // sleep(1);
-        Sleep_us(200000);
-        // Sleep_us(20000);
+        
+        main_timer += 0.001;
+        Sleep_us(1000);
+
     }
     Sleep_us(20000);
     reset_motors();

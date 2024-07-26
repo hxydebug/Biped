@@ -1,7 +1,7 @@
 #include "swing_leg_controller.h"
 
 float _KP = 0.03;
-float foot_clearance = 0.01;
+float foot_clearance = 0.02;
 float desired_height = 0.345;
 float t_swing = t_stance;
 Eigen::Vector3d dP;
@@ -322,7 +322,7 @@ void swing_leg_controller::set_PDGain(){
 	// pGain << 1300,1300,1300;
 	// dGain << 25,  25,  25;
   pGain << 1300,1300,1300;
-	dGain << 10,  10,  10;
+	dGain << 30,  30,  30;
   // pGain << 0,0,0;
 	// dGain << 0,0,0;
 
