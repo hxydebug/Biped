@@ -22,6 +22,27 @@ Eigen::MatrixXd calcu_Jaco(Eigen::Vector3d angle,Leg leg){
 	return Mat;
 }
 
+Eigen::MatrixXd calcu_Jaco_L2change(Eigen::Vector3d angle,Leg leg){
+	Eigen::MatrixXd Mat(3,3);
+    float q0 = angle[0];
+    float q1 = angle[1];
+    float q2 = angle[2];
+    float L0 = Len0;
+    float L1 = Len1;
+    float L2 = Len2_change;
+	if(leg == l_leg){
+		Mat << 0, L2*(cos(q1)*cos(q2) - sin(q1)*sin(q2)) + L1*cos(q1), L2*(cos(q1)*cos(q2) - sin(q1)*sin(q2)),
+			L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) - L0*sin(q0) + L1*cos(q0)*cos(q1), - L2*(cos(q1)*sin(q0)*sin(q2) + cos(q2)*sin(q0)*sin(q1)) - L1*sin(q0)*sin(q1), -L2*(cos(q1)*sin(q0)*sin(q2) + cos(q2)*sin(q0)*sin(q1)),
+			L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)) + L1*cos(q1)*sin(q0),   L2*(cos(q0)*cos(q1)*sin(q2) + cos(q0)*cos(q2)*sin(q1)) + L1*cos(q0)*sin(q1),  L2*(cos(q0)*cos(q1)*sin(q2) + cos(q0)*cos(q2)*sin(q1));
+	}
+	else{
+		Mat << 0, -L2*(cos(q1)*cos(q2) - sin(q1)*sin(q2)) - L1*cos(q1), -L2*(cos(q1)*cos(q2) - sin(q1)*sin(q2)),
+			L0*sin(q0) + L2*(cos(q0)*cos(q1)*cos(q2) - cos(q0)*sin(q1)*sin(q2)) + L1*cos(q0)*cos(q1), - L2*(cos(q1)*sin(q0)*sin(q2) + cos(q2)*sin(q0)*sin(q1)) - L1*sin(q0)*sin(q1), -L2*(cos(q1)*sin(q0)*sin(q2) + cos(q2)*sin(q0)*sin(q1)),
+			L1*cos(q1)*sin(q0) - L0*cos(q0) - L2*(sin(q0)*sin(q1)*sin(q2) - cos(q1)*cos(q2)*sin(q0)),   L2*(cos(q0)*cos(q1)*sin(q2) + cos(q0)*cos(q2)*sin(q1)) + L1*cos(q0)*sin(q1),  L2*(cos(q0)*cos(q1)*sin(q2) + cos(q0)*cos(q2)*sin(q1));				
+	}
+	return Mat;
+}
+
 Eigen::MatrixXd calcu_Jaco(Angle angle,Leg leg){
 	Eigen::MatrixXd Mat(3,3);
 	float q0 = angle.q[0];

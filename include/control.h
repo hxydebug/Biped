@@ -42,6 +42,7 @@ Eigen::MatrixXd calcu_Jaco(Eigen::Vector3d angle,Leg leg);
 Eigen::MatrixXd calcu_Jaco(Angle angle,Leg leg);
 Position getFootPositionInBaswFrame(Eigen::VectorXd angle, Leg leg);
 Position getFootPositionInBaswFrame_L2change(Eigen::VectorXd angle, Leg leg);
+Eigen::MatrixXd calcu_Jaco_L2change(Eigen::Vector3d angle,Leg leg);
 
 
 

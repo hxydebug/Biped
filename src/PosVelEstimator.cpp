@@ -163,6 +163,18 @@ void PosVelEstimator::run(){
         // } else if (phase > (double(1) - trust_window)) {
         // trust = (double(1) - phase) / trust_window;
         // }
+
+        // ground contact detection to decide trust option
+        // if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
+        //     trust = 1.0
+        // }
+        // else if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.4){
+        //     trust = 0.5;
+        // }
+        // else{
+        //     trust = 0.0;
+        // }
+
         //double high_suspect_number(1000);
         double high_suspect_number(100);
 
