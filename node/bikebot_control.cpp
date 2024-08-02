@@ -550,8 +550,8 @@ void* legcontrol_thread(void* args)
 
         l_controller.get_action(&Mcmd,1,stc_tau,user_cmd);
         stance = gait_gen.leg_state[0];
-        l_leg_p = swc.postarget[0];
-        r_leg_p = swc.postarget[1];
+        l_leg_p = swc.postarget_global[0];
+        r_leg_p = swc.postarget_global[1];
         l_leg_v = swc.veltarget[0];
         r_leg_v = swc.veltarget[1];
         // l_footP_begin = swc.foot_position_body[0];
@@ -668,7 +668,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0725/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0801/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -739,9 +739,8 @@ void* record_thread(void* args)
                 << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2] << ", "
                 << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
                 << stc.w_com_des[2] << ", " << stc.tau_pd[0] << ", " << stc.tau_pd[1] << ", " << stc.tau_pd[2] << ", "
-                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2]
-                // << l_desired_angle.q[0] << ", " << l_desired_angle.q[1] << ", " << l_desired_angle.q[2] << ", "
-                // << r_desired_angle.q[0] << ", " << r_desired_angle.q[1] << ", " << r_desired_angle.q[2] 
+                << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
+                << leg_state.leg_trust[0] << ", " << leg_state.leg_trust[1] 
                 << std::endl;
 
 
@@ -818,7 +817,7 @@ int main(int argc, char **argv)
     printf("\r\n");
 
     //infer if imu is ready
-    // while(imu_received == 0);
+    while(imu_received == 0);
     cout << "Hardware is Ready!" << endl;
     //infer if vicon is ready
     while(vicon_received == 0);

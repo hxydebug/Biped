@@ -102,7 +102,7 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		if (timer < 0.04){
 			stc_tau.setConstant(0);
 		}
-		stc_tau.setConstant(0);
+		// stc_tau.setConstant(0);
 
 		// initial
 		for(int i(0);i<6;i++){
@@ -128,16 +128,16 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// left leg swing
 			ltau = swc_tau.head(3);
-			float Mkp = 110;
-			float Mkd = 1.5;
+			float Mkp = 65;
+			float Mkd = 2.5;
 			Mcmd->cmd[0].kp = Mkp;
 			Mcmd->cmd[1].kp = Mkp;
 			Mcmd->cmd[2].kp = Mkp;
 			Mcmd->cmd[0].kd = Mkd;
 			Mcmd->cmd[1].kd = Mkd;
 			Mcmd->cmd[2].kd = Mkd;
-			if (gait_generate->normalized_phase[0]>0.85){
-				Mkp = 90;
+			if (gait_generate->normalized_phase[0]>0.9){
+				Mkp = 10;
 				Mkd = 2.5;
 				Mcmd->cmd[0].kp = Mkp;
 				Mcmd->cmd[1].kp = Mkp;
@@ -169,16 +169,16 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// right leg swing
 			rtau = swc_tau.tail(3);
-			float Mkp = 110;
-			float Mkd = 1.5;
+			float Mkp = 65;
+			float Mkd = 2.5;
 			Mcmd->cmd[3].kp = Mkp;
 			Mcmd->cmd[4].kp = Mkp;
 			Mcmd->cmd[5].kp = Mkp;
 			Mcmd->cmd[3].kd = Mkd;
 			Mcmd->cmd[4].kd = Mkd;
 			Mcmd->cmd[5].kd = Mkd;
-			if (gait_generate->normalized_phase[1]>0.85){
-				Mkp = 90;
+			if (gait_generate->normalized_phase[1]>0.9){
+				Mkp = 10;
 				Mkd = 2.5;
 				Mcmd->cmd[3].kp = Mkp;
 				Mcmd->cmd[4].kp = Mkp;

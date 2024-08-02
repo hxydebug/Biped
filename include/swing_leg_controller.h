@@ -14,6 +14,7 @@ public:
     void set_PDGain();
     Eigen::VectorXd tau(Eigen::VectorXd pA,Eigen::VectorXd vA,Eigen::VectorXd pT,Eigen::VectorXd vT);
     Position postarget[2];
+    Position postarget_global[2];
     Eigen::Vector3d veltarget[2];
     Eigen::Vector3d angveltarget[2];
     Eigen::Vector3d foot_position_begin[2];

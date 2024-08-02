@@ -36,6 +36,7 @@ typedef struct{
     float vicon_COMvel[3];
     float vicon_COMpos[3];
     float pos_offset[3];
+    float leg_trust[2];
 }  Leg_state;
 
 //定义leg_cmd结构体

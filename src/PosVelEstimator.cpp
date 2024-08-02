@@ -137,7 +137,7 @@ void PosVelEstimator::run(){
 
         // get foot velocity in world frame
         Eigen::VectorXd dp_rel(3);
-        Eigen::Matrix3d Jac = calcu_Jaco(legpos[i],i);
+        Eigen::Matrix3d Jac = calcu_Jaco_L2change(legpos[i],i);
         dp_rel = Jac*legvel[i];
         // cross must define specifically
         Eigen::VectorXd cross_result = omegaBody.cross(p_rel);
@@ -157,24 +157,25 @@ void PosVelEstimator::run(){
         double trust_window = double(0.25);
         // double trust_window = double(0.2);
 
-        if (phase < trust_window) {
-        trust = phase / trust_window;
-        }
+        // if (phase < trust_window) {
+        // trust = phase / trust_window;
+        // }
         // } else if (phase > (double(1) - trust_window)) {
         // trust = (double(1) - phase) / trust_window;
         // }
 
         // ground contact detection to decide trust option
-        // if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
-        //     trust = 1.0
-        // }
-        // else if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.4){
-        //     trust = 0.5;
-        // }
-        // else{
-        //     trust = 0.0;
-        // }
-
+        if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
+            trust = 1.0;
+        }
+        else if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.4){
+            trust = 0.5;
+        }
+        else{
+            trust = 0.0;
+        }
+        _robot->leg_trust[i] = trust;
+        
         //double high_suspect_number(1000);
         double high_suspect_number(100);
 
@@ -271,9 +272,9 @@ void PosVelEstimator::run(){
     _robot->com_position[2] = COMposition_vicon[2];
     _robot->com_height = COMposition_vicon[2];
 
-    lpf_velocity[0].lpf(COMvelocity_vicon[0]);
-    lpf_velocity[1].lpf(COMvelocity_vicon[1]);
-    lpf_velocity[2].lpf(COMvelocity_vicon[2]);
+    lpf_velocity[0].lpf(com_vel[0]);
+    lpf_velocity[1].lpf(com_vel[1]);
+    lpf_velocity[2].lpf(com_vel[2]);
     _robot->vicon_COMvel[0] = lpf_velocity[0].last_out;
     _robot->vicon_COMvel[1] = lpf_velocity[1].last_out;
     _robot->vicon_COMvel[2] = lpf_velocity[2].last_out;
