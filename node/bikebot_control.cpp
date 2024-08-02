@@ -550,8 +550,8 @@ void* legcontrol_thread(void* args)
 
         l_controller.get_action(&Mcmd,1,stc_tau,user_cmd);
         stance = gait_gen.leg_state[0];
-        l_leg_p = swc.postarget_global[0];
-        r_leg_p = swc.postarget_global[1];
+        l_leg_p = swc.postarget[0];
+        r_leg_p = swc.postarget[1];
         l_leg_v = swc.veltarget[0];
         r_leg_v = swc.veltarget[1];
         // l_footP_begin = swc.foot_position_body[0];

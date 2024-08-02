@@ -321,10 +321,10 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
 void swing_leg_controller::set_PDGain(){
 	pGain.resize(3);
 	dGain.resize(3);
-	pGain << 1300,1300,1300;
-	dGain << 30,  30,  30;
-  // pGain << 1000,1000,1200;
-	// dGain << 10,  10,  15;
+	// pGain << 1300,1300,1300;
+	// dGain << 30,  30,  30;
+  pGain << 1000,1000,1200;
+	dGain << 10,  10,  15;
   // pGain << 0,0,0;
 	// dGain << 0,0,0;
 
@@ -399,49 +399,49 @@ Position gen_swing_foot_trajectory(float input_phase, Position start_pos, Positi
 }
 
 // add the cycloid
-Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ){
-  float phase = period;
-  period = period * t_whole;
-  Eigen::Vector3d ans;
-  if (isZ) {
-    t_whole = t_whole * 0.5;
-    float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-    float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-    float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
-    ans << p_des, v_des, a_des;
-  }
-  else{
-    if (phase <= 0.99){
-      t_whole = t_whole * 0.99;
-      float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-      float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-      float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
-      ans << p_des, v_des, a_des;
-    }
-    else{
-      ans << p_end, 0, 0;
-    }
-    
-  }
-  
-
-  return ans;
-}
-
 // Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ){
-
+//   float phase = period;
 //   period = period * t_whole;
-
+//   Eigen::Vector3d ans;
 //   if (isZ) {
 //     t_whole = t_whole * 0.5;
+//     float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
+//     float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
+//     float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+//     ans << p_des, v_des, a_des;
 //   }
-//   float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-//   float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-//   float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
-//   Eigen::Vector3d ans;
-//   ans << p_des, v_des, a_des;
+//   else{
+//     if (phase <= 0.99){
+//       t_whole = t_whole * 0.99;
+//       float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
+//       float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
+//       float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+//       ans << p_des, v_des, a_des;
+//     }
+//     else{
+//       ans << p_end, 0, 0;
+//     }
+    
+//   }
+  
+
 //   return ans;
 // }
+
+Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_whole, bool isZ){
+
+  period = period * t_whole;
+
+  if (isZ) {
+    t_whole = t_whole * 0.5;
+  }
+  float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
+  float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
+  float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+  Eigen::Vector3d ans;
+  ans << p_des, v_des, a_des;
+  return ans;
+}
 Position get_swing_foot_trajectory(float input_phase, Position start_pos, Position end_pos){
   float phase = input_phase;
 

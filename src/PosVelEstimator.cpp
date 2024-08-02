@@ -272,9 +272,9 @@ void PosVelEstimator::run(){
     _robot->com_position[2] = COMposition_vicon[2];
     _robot->com_height = COMposition_vicon[2];
 
-    lpf_velocity[0].lpf(com_vel[0]);
-    lpf_velocity[1].lpf(com_vel[1]);
-    lpf_velocity[2].lpf(com_vel[2]);
+    lpf_velocity[0].lpf(COMvelocity_vicon[0]);
+    lpf_velocity[1].lpf(COMvelocity_vicon[1]);
+    lpf_velocity[2].lpf(COMvelocity_vicon[2]);
     _robot->vicon_COMvel[0] = lpf_velocity[0].last_out;
     _robot->vicon_COMvel[1] = lpf_velocity[1].last_out;
     _robot->vicon_COMvel[2] = lpf_velocity[2].last_out;

@@ -128,24 +128,24 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// left leg swing
 			ltau = swc_tau.head(3);
-			float Mkp = 65;
-			float Mkd = 2.5;
+			float Mkp = 8;
+			float Mkd = 1.0;
 			Mcmd->cmd[0].kp = Mkp;
 			Mcmd->cmd[1].kp = Mkp;
 			Mcmd->cmd[2].kp = Mkp;
 			Mcmd->cmd[0].kd = Mkd;
 			Mcmd->cmd[1].kd = Mkd;
 			Mcmd->cmd[2].kd = Mkd;
-			if (gait_generate->normalized_phase[0]>0.9){
-				Mkp = 10;
-				Mkd = 2.5;
-				Mcmd->cmd[0].kp = Mkp;
-				Mcmd->cmd[1].kp = Mkp;
-				Mcmd->cmd[2].kp = Mkp;
-				Mcmd->cmd[0].kd = Mkd;
-				Mcmd->cmd[1].kd = Mkd;
-				Mcmd->cmd[2].kd = Mkd;
-			}
+			// if (gait_generate->normalized_phase[0]>0.9){
+			// 	Mkp = 10;
+			// 	Mkd = 2.5;
+			// 	Mcmd->cmd[0].kp = Mkp;
+			// 	Mcmd->cmd[1].kp = Mkp;
+			// 	Mcmd->cmd[2].kp = Mkp;
+			// 	Mcmd->cmd[0].kd = Mkd;
+			// 	Mcmd->cmd[1].kd = Mkd;
+			// 	Mcmd->cmd[2].kd = Mkd;
+			// }
 			
 			// Mcmd->cmd[0].v = swctr->angveltarget[0][0];
 			// Mcmd->cmd[1].v = swctr->angveltarget[0][1];
@@ -169,24 +169,24 @@ void leg_controller::get_action(Motor_cmd *Mcmd, int Run_mode, Eigen::VectorXd s
 		else {
 			// right leg swing
 			rtau = swc_tau.tail(3);
-			float Mkp = 65;
-			float Mkd = 2.5;
+			float Mkp = 8;
+			float Mkd = 1.0;
 			Mcmd->cmd[3].kp = Mkp;
 			Mcmd->cmd[4].kp = Mkp;
 			Mcmd->cmd[5].kp = Mkp;
 			Mcmd->cmd[3].kd = Mkd;
 			Mcmd->cmd[4].kd = Mkd;
 			Mcmd->cmd[5].kd = Mkd;
-			if (gait_generate->normalized_phase[1]>0.9){
-				Mkp = 10;
-				Mkd = 2.5;
-				Mcmd->cmd[3].kp = Mkp;
-				Mcmd->cmd[4].kp = Mkp;
-				Mcmd->cmd[5].kp = Mkp;
-				Mcmd->cmd[3].kd = Mkd;
-				Mcmd->cmd[4].kd = Mkd;
-				Mcmd->cmd[5].kd = Mkd;
-			}
+			// if (gait_generate->normalized_phase[1]>0.9){
+			// 	Mkp = 10;
+			// 	Mkd = 2.5;
+			// 	Mcmd->cmd[3].kp = Mkp;
+			// 	Mcmd->cmd[4].kp = Mkp;
+			// 	Mcmd->cmd[5].kp = Mkp;
+			// 	Mcmd->cmd[3].kd = Mkd;
+			// 	Mcmd->cmd[4].kd = Mkd;
+			// 	Mcmd->cmd[5].kd = Mkd;
+			// }
 			// Mcmd->cmd[3].v = swctr->angveltarget[1][0];
 			// Mcmd->cmd[4].v = swctr->angveltarget[1][1];
 			// Mcmd->cmd[5].v = swctr->angveltarget[1][2];
