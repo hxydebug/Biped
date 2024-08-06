@@ -56,6 +56,7 @@ PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generato
     position_offset[2] = -(0.08866+0.016-detz);
 
     vel_imu.setZero();
+    World_vel.setZero();
 }
 
 void PosVelEstimator::run(){
@@ -106,7 +107,8 @@ void PosVelEstimator::run(){
     v0 << _xhat[3], _xhat[4], _xhat[5];
 
     // get vel measured by imu
-    vel_imu += World_acc * dt;
+    World_vel += World_acc * dt;
+    vel_imu = World_vel + Rbod * omegaBody.cross(position_offset);
 
     // get leg joint position and velocity
     Eigen::VectorXd nowang(6);
@@ -196,7 +198,7 @@ void PosVelEstimator::run(){
         _ps.segment(i1, 3) = -p_f - Rbod * position_offset;
         _vs.segment(i1, 3) = (1.0f - trust) * v0 + trust * (-dp_f - Rbod * omegaBody.cross(position_offset));
         pzs(i) = (1.0f - trust) * (p0(2) + p_f(2));
-        vel_kine[i] = (-dp_f) - Rbod * omegaBody.cross(position_offset);
+        vel_kine[i] = -dp_f;
     }
 
     Eigen::Matrix<double, 14, 1> y;

@@ -45,6 +45,7 @@ public:
     void run();
     Eigen::Vector3d position_offset;// from imu to com frame
     LPF lpf_velocity[3] = {LPF(1), LPF(1), LPF(1)};
+    Eigen::Vector3d World_vel;
     Eigen::Vector3d vel_imu;
     Eigen::Vector3d vel_kine[2];
     float dt;
