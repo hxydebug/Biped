@@ -11,6 +11,8 @@ find_package(catkin REQUIRED COMPONENTS
   serial
   geometry_msgs
   sensor_msgs
+  message_generation
+  message_filters
 )
 
 find_package(Eigen3 REQUIRED)
