@@ -36,8 +36,11 @@
 // #include "OpenZen.h"
 // #include <iostream>
 #include <sensor_msgs/Imu.h>
+#include "sensor_msgs/JointState.h"
 #include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "Contact.h"
+#include "ContactArray.h"
 
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
@@ -62,7 +65,7 @@ Angle nextangle[2];
 Angle L_angle;
 Angle R_angle;
 int Iter = 500;//设置2000ms
-pthread_t tids1[4];
+pthread_t tids1[5];
 pthread_t tids2[4];
 float global_time = 0;
 
@@ -300,6 +303,104 @@ void* vicon_thread(void* args)
     // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
     spinner.spin();
     
+    return NULL;
+}
+
+//publish_thread
+void* publish_thread(void* args)
+{
+    cout << "publish_thread" << endl;
+
+    int argc = 0;
+    ros::init(argc, NULL, "leg_information");
+    ros::NodeHandle nh;
+    ros::Publisher contact_pub = nh.advertise<custom_sensor_msgs::ContactArray>("/Contacts",1000);
+    ros::Publisher jointState_pub = nh.advertise<sensor_msgs::JointState>("/JointState",1000);
+    ros::Rate loop_rate(1000);
+    uint32_t seq_ = 0;
+    int flag = 1;
+    while (ros::ok()) {
+        custom_sensor_msgs::ContactArray contact_msg;
+        sensor_msgs::JointState joint_msg;
+        // Header msg
+        joint_msg.header.seq = seq_;
+        joint_msg.header.stamp = ros::Time::now();
+        joint_msg.header.frame_id = "joint";
+        // data msg
+        joint_msg.position[0] = leg_state.cbdata[0].p;
+        joint_msg.position[1] = leg_state.cbdata[1].p;
+        joint_msg.position[2] = leg_state.cbdata[2].p;
+        joint_msg.position[3] = leg_state.cbdata[3].p;
+        joint_msg.position[4] = leg_state.cbdata[4].p;
+        joint_msg.position[5] = leg_state.cbdata[5].p;
+        joint_msg.velocity[0] = leg_state.cbdata[0].v;
+        joint_msg.velocity[1] = leg_state.cbdata[1].v;
+        joint_msg.velocity[2] = leg_state.cbdata[2].v;
+        joint_msg.velocity[3] = leg_state.cbdata[3].v;
+        joint_msg.velocity[4] = leg_state.cbdata[4].v;
+        joint_msg.velocity[5] = leg_state.cbdata[5].v;
+
+        // Header msg
+        contact_msg.header.seq = seq_;
+        contact_msg.header.stamp = joint_msg.header.stamp;
+        contact_msg.header.frame_id = "contact";
+        // contact bool
+        bool leg_contact[2];
+        // get leg joint position and velocity
+        Eigen::VectorXd nowang(6);
+        Eigen::VectorXd nowangV(6);
+        for(int i(0);i<6;i++){
+            nowang[i] = _robot->cbdata[i].p;
+            nowangV[i] = _robot->cbdata[i].v;
+        }
+        Eigen::Vector3d legpos[2];
+        legpos[0] = nowang.head(3);
+        legpos[1] = nowang.tail(3);
+        Eigen::Vector3d legvel[2];
+        legvel[0] = nowangV.head(3);
+        legvel[1] = nowangV.tail(3);
+        for (int i = 0; i < 2; i++) {
+            // get foot velocity in world frame
+            Eigen::VectorXd dp_rel(3);
+            Eigen::Matrix3d Jac = calcu_Jaco_L2change(legpos[i],i);
+            dp_rel = Jac*legvel[i];
+            // if(gait_gen.leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
+            //     leg_contact[i] = true;
+            // }
+            // else{
+            //     leg_contact[i] = false;
+            // }
+            if(gait_gen.leg_state[i] == 1) {
+                if (fabs(dp_rel[2])<=0.2){
+                    flag = 1;
+                    leg_contact[i] = true;
+                }
+                else{
+                    if(flag==1){
+                        leg_contact[i] = true;
+                    }
+                    else{
+                        leg_contact[i] = false;
+                    }
+                }
+                
+            }
+            else{
+                leg_contact[i] = false;
+                flag = 0;
+            }
+        }
+        // data msg
+        contact_msg.contact[0].indicator = leg_contact[0];
+        contact_msg.contact[1].indicator = leg_contact[1];
+
+
+        jointState_pub.publish(joint_msg);
+        contact_pub.publish(contact_msg);
+        seq_ ++;
+        loop_rate.sleep();
+    }
+
     return NULL;
 }
 
@@ -933,6 +1034,11 @@ void thread_setup(void){
         cout << "pthread_create3 error: error_code=" << ret << endl;
     }
 
+    ret = pthread_create(&tids1[4], NULL, publish_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create3 error: error_code=" << ret << endl;
+    }
+
 }
 
 void control_threadcreate(void){
@@ -999,13 +1105,13 @@ void control_threadcreate(void){
     CPU_SET(1, &mask);//绑定cpu1
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
 
-    CPU_ZERO(&mask);
-    CPU_SET(2, &mask);//绑定cpu2
-    pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
+    // CPU_ZERO(&mask);
+    // CPU_SET(2, &mask);//绑定cpu2
+    // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
-    CPU_ZERO(&mask);
-    CPU_SET(3, &mask);//绑定cpu3
-    pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
+    // CPU_ZERO(&mask);
+    // CPU_SET(3, &mask);//绑定cpu3
+    // pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
 
     // param.sched_priority = 48;
     // ret = pthread_attr_setschedparam(&attr, &param);

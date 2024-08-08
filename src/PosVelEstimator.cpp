@@ -15,6 +15,7 @@ Eigen::Vector3d COMvelocity_vicon;
 Eigen::Vector3d position_vicon;
 Eigen::Vector3d velocity_vicon;
 
+
 PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep){
     _robot = robot;
     _gait_generator = gait_generator;
