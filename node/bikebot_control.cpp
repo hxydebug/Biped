@@ -1143,11 +1143,11 @@ void control_threadcreate(void){
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
 
     // CPU_ZERO(&mask);
-    // CPU_SET(2, &mask);//绑定cpu2
+    // CPU_SET(3, &mask);//绑定cpu3
     // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
     CPU_ZERO(&mask);
-    CPU_SET(3, &mask);//绑定cpu3
+    CPU_SET(2, &mask);//绑定cpu2
     pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
 
     // param.sched_priority = 48;
