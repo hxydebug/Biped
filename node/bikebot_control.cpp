@@ -67,7 +67,7 @@ Angle L_angle;
 Angle R_angle;
 int Iter = 500;//设置2000ms
 pthread_t tids1[6];
-pthread_t tids2[4];
+pthread_t tids2[6];
 float global_time = 0;
 
 //共享全局变量
@@ -936,9 +936,9 @@ int main(int argc, char **argv)
     setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     cout<<"first step"<<endl;
     legstate_update();
-    int ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
+    int ret = pthread_create(&tids2[4], NULL, safety_thread, NULL);
     if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
+        cout << "pthread_create4 error: error_code=" << ret << endl;
     }
     setpoint1(-0.003,0.1,-0.295);//0.04
     cout<<"leg init finished!"<<endl;
