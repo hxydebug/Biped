@@ -39,6 +39,7 @@
 #include "sensor_msgs/JointState.h"
 #include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/TransformStamped.h"
+#include "geometry_msgs/PoseWithCovarianceStamped.h"
 #include "Contact.h"
 #include "ContactArray.h"
 
@@ -65,7 +66,7 @@ Angle nextangle[2];
 Angle L_angle;
 Angle R_angle;
 int Iter = 500;//设置2000ms
-pthread_t tids1[5];
+pthread_t tids1[6];
 pthread_t tids2[4];
 float global_time = 0;
 
@@ -105,6 +106,8 @@ Angle l_desired_angle;
 Angle r_desired_angle;
 Eigen::Vector3d vel_imu;
 Eigen::Vector3d vel_kine[2];
+float inEKF_pos[3];
+float inEKF_rpy[3];
 
 //if can start
 int bike_begin = 0;
@@ -128,7 +131,7 @@ gait_generator gait_gen;
 stance_leg_controller stc(&leg_state,&gait_gen,v_body);
 Eigen::VectorXd stc_tau(6);
 
-ros::MultiThreadedSpinner spinner(2);
+ros::MultiThreadedSpinner spinner(3);
 Eigen::Vector3d last_vicon_pos;
 
 static void sighand(int sig)
@@ -301,6 +304,35 @@ void* vicon_thread(void* args)
     ros::NodeHandle nh;
     ros::Subscriber vicon_sub = nh.subscribe("/vicon/Xinyan/Xinyan",1,viconCallback);
     // ros::Subscriber acc_sub = nh.subscribe("/filter/free_acceleration",1,accCallback);
+    spinner.spin();
+    
+    return NULL;
+}
+
+void inEKFCallback(const geometry_msgs::PoseWithCovarianceStampedConstPtr &inEKF){
+
+    inEKF_pos[0] = inEKF->pose.pose.position.x;
+    inEKF_pos[1] = inEKF->pose.pose.position.y;
+    inEKF_pos[2] = inEKF->pose.pose.position.z;
+
+    Eigen::Vector4d qua;
+    Eigen::Vector3d rpy;
+    qua << inEKF->pose.pose.orientation.w, inEKF->pose.pose.orientation.x, inEKF->pose.pose.orientation.y, inEKF->pose.pose.orientation.z;
+    quaToRpy(qua,rpy);
+    inEKF_rpy[0] = rpy[0];
+    inEKF_rpy[1] = rpy[1];
+    inEKF_rpy[2] = rpy[2];
+
+}
+//subscribe_thread
+void* subscribe_thread(void* args)
+{
+    cout << "subscribe_thread" << endl;
+
+    int argc = 0;
+    ros::init(argc, NULL, "subscribe_node");
+    ros::NodeHandle nh;
+    ros::Subscriber inEKF_sub = nh.subscribe("/robot/inekf_estimation/pose",1,inEKFCallback);
     spinner.spin();
     
     return NULL;
@@ -1036,7 +1068,12 @@ void thread_setup(void){
 
     ret = pthread_create(&tids1[4], NULL, publish_thread, NULL);
     if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
+        cout << "pthread_create4 error: error_code=" << ret << endl;
+    }
+
+    ret = pthread_create(&tids1[5], NULL, subscribe_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create5 error: error_code=" << ret << endl;
     }
 
 }
@@ -1109,9 +1146,9 @@ void control_threadcreate(void){
     // CPU_SET(2, &mask);//绑定cpu2
     // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
-    // CPU_ZERO(&mask);
-    // CPU_SET(3, &mask);//绑定cpu3
-    // pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
+    CPU_ZERO(&mask);
+    CPU_SET(3, &mask);//绑定cpu3
+    pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
 
     // param.sched_priority = 48;
     // ret = pthread_attr_setschedparam(&attr, &param);
