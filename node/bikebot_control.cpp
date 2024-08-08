@@ -62,7 +62,7 @@ Angle nextangle[2];
 Angle L_angle;
 Angle R_angle;
 int Iter = 500;//设置2000ms
-pthread_t tids1[4];
+pthread_t tids1[5];
 pthread_t tids2[4];
 float global_time = 0;
 
@@ -803,7 +803,7 @@ int main(int argc, char **argv)
     setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     cout<<"first step"<<endl;
     legstate_update();
-    int ret = pthread_create(&tids1[3], NULL, safety_thread, NULL);
+    int ret = pthread_create(&tids1[4], NULL, safety_thread, NULL);
     if (ret != 0){
         cout << "pthread_create3 error: error_code=" << ret << endl;
     }
@@ -999,12 +999,12 @@ void control_threadcreate(void){
     CPU_SET(1, &mask);//绑定cpu1
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
 
-    CPU_ZERO(&mask);
-    CPU_SET(2, &mask);//绑定cpu2
-    pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
+    // CPU_ZERO(&mask);
+    // CPU_SET(3, &mask);//绑定cpu3
+    // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
     CPU_ZERO(&mask);
-    CPU_SET(3, &mask);//绑定cpu3
+    CPU_SET(2, &mask);//绑定cpu2
     pthread_setaffinity_np(tids2[0], sizeof(cpu_set_t), &mask) ;
 
     // param.sched_priority = 48;
