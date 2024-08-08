@@ -16,7 +16,7 @@
 #include <ros/message_operations.h>
 
 #include <std_msgs/Header.h>
-#include <custom_sensor_msgs/Contact.h>
+#include "Contact.h"
 
 namespace custom_sensor_msgs
 {

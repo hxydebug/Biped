@@ -382,8 +382,8 @@ void* publish_thread(void* args)
         Eigen::VectorXd nowang(6);
         Eigen::VectorXd nowangV(6);
         for(int i(0);i<6;i++){
-            nowang[i] = _robot->cbdata[i].p;
-            nowangV[i] = _robot->cbdata[i].v;
+            nowang[i] = leg_state.cbdata[i].p;
+            nowangV[i] = leg_state.cbdata[i].v;
         }
         Eigen::Vector3d legpos[2];
         legpos[0] = nowang.head(3);
@@ -423,8 +423,8 @@ void* publish_thread(void* args)
             }
         }
         // data msg
-        contact_msg.contact[0].indicator = leg_contact[0];
-        contact_msg.contact[1].indicator = leg_contact[1];
+        contact_msg.contacts[0].indicator = leg_contact[0];
+        contact_msg.contacts[1].indicator = leg_contact[1];
 
 
         jointState_pub.publish(joint_msg);
