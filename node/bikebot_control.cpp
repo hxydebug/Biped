@@ -346,8 +346,8 @@ void* publish_thread(void* args)
     int argc = 0;
     ros::init(argc, NULL, "leg_information");
     ros::NodeHandle nh;
-    ros::Publisher contact_pub = nh.advertise<biped::ContactArray>("/Contacts",1000);
-    ros::Publisher jointState_pub = nh.advertise<sensor_msgs::JointState>("/JointState",1000);
+    ros::Publisher contact_pub = nh.advertise<biped::ContactArray>("/Contacts",1);
+    ros::Publisher jointState_pub = nh.advertise<sensor_msgs::JointState>("/JointState",1);
     ros::Rate loop_rate(1000);
     uint32_t seq_ = 0;
     int flag = 1;
@@ -804,7 +804,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0801/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0808/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -876,7 +876,9 @@ void* record_thread(void* args)
                 << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
                 << stc.w_com_des[2] << ", " << stc.tau_pd[0] << ", " << stc.tau_pd[1] << ", " << stc.tau_pd[2] << ", "
                 << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
-                << leg_state.leg_trust[0] << ", " << leg_state.leg_trust[1] 
+                << leg_state.leg_trust[0] << ", " << leg_state.leg_trust[1] << ", "
+                << inEKF_pos[0] << ", " << inEKF_pos[1] << ", " << inEKF_pos[2] << ", "
+                << inEKF_rpy[0] << ", " << inEKF_rpy[1] << ", " << inEKF_rpy[2]
                 << std::endl;
 
 
