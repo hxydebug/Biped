@@ -668,7 +668,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0801/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0808/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 

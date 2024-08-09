@@ -15,6 +15,8 @@ Eigen::Vector3d COMvelocity_vicon;
 Eigen::Vector3d position_vicon;
 Eigen::Vector3d velocity_vicon;
 
+int flag = 1;
+
 PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep){
     _robot = robot;
     _gait_generator = gait_generator;
@@ -167,14 +169,34 @@ void PosVelEstimator::run(){
         // }
 
         // ground contact detection to decide trust option
-        if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
-            trust = 1.0;
-        }
-        else if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.4){
-            trust = 0.5;
+        // if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.2) {
+        //     trust = 1.0;
+        // }
+        // else if(_gait_generator->leg_state[i] == 1 && fabs(dp_rel[2])<=0.4){
+        //     trust = 0.5;
+        // }
+        // else{
+        //     trust = 0.0;
+        // }
+        // new strategy
+        if(_gait_generator->leg_state[i] == 1) {
+            if (fabs(dp_rel[2])<=0.2){
+                flag = 1;
+                trust = 1.0;
+            }
+            else{
+                if(flag==1){
+                    trust = 1.0;
+                }
+                else{
+                    trust = 0.0;
+                }
+            }
+            
         }
         else{
             trust = 0.0;
+            flag = 0;
         }
         _robot->leg_trust[i] = trust;
         
