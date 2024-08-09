@@ -25,6 +25,9 @@ generate_messages(
   std_msgs
 )
 find_package(Eigen3 REQUIRED)
+find_package(Boost REQUIRED timer chrono)
+find_package(yaml-cpp REQUIRED)
+find_package(drift REQUIRED)
 
 # set(QPOASES_INLUDE_DIRS /home/hxy/catkin_ws/src/licycle/third_party/qpOASES/include/qpOASES)
 set(QPOASES_INLUDE_DIRS /usr/local/include/qpOASES)
@@ -32,6 +35,7 @@ include_directories (${QPOASES_INLUDE_DIRS})
 include_directories (${EIGEN3_INCLUDE_DIRS})
 INCLUDE_DIRECTORIES("/usr/include/python3.6m")
 INCLUDE_DIRECTORIES("~/openzen/include")
+include_directories("~/drift/include")
 
 catkin_package(
 #  INCLUDE_DIRS include
@@ -44,6 +48,14 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${YAML_CPP_INCLUDE_DIR}
+  ${Boost_INCLUDE_DIRS}
+)
+set(LIBS
+  ${EIGEN3_LIBS}
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${Boost_GENERAL}
 )
 
 add_executable(OpenZenExampleCpp
@@ -95,7 +107,7 @@ target_link_libraries(motor_drive PUBLIC)
 target_include_directories(motor_drive PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 add_executable(Biped_control node/bikebot_control.cpp)
-target_link_libraries(Biped_control ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)
+target_link_libraries(Biped_control ${catkin_LIBRARIES} ${LIBS}  yaml-cpp drift pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)
 
 add_executable(Calibrate node/calibrate.cpp)
 target_link_libraries(Calibrate ${catkin_LIBRARIES} pthread motor_drive leg_controller opmath -lpython3.6m swing_leg_controller stance_leg_controller gait_generator control PosVelEstimator)
