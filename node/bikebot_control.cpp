@@ -40,8 +40,8 @@
 #include "geometry_msgs/Vector3Stamped.h"
 #include "geometry_msgs/TransformStamped.h"
 #include "geometry_msgs/PoseWithCovarianceStamped.h"
-#include "Contact.h"
-#include "ContactArray.h"
+// #include "Contact.h"
+#include "biped/ContactArray.h"
 
 #include "swing_leg_controller.h"
 #include "stance_leg_controller.h"
@@ -346,14 +346,17 @@ void* publish_thread(void* args)
     int argc = 0;
     ros::init(argc, NULL, "leg_information");
     ros::NodeHandle nh;
-    ros::Publisher contact_pub = nh.advertise<custom_sensor_msgs::ContactArray>("/Contacts",1000);
+    ros::Publisher contact_pub = nh.advertise<biped::ContactArray>("/Contacts",1000);
     ros::Publisher jointState_pub = nh.advertise<sensor_msgs::JointState>("/JointState",1000);
     ros::Rate loop_rate(1000);
     uint32_t seq_ = 0;
     int flag = 1;
     while (ros::ok()) {
-        custom_sensor_msgs::ContactArray contact_msg;
+        biped::ContactArray contact_msg;
         sensor_msgs::JointState joint_msg;
+        joint_msg.position.resize(6);
+        joint_msg.velocity.resize(6);
+        contact_msg.contacts.resize(2);
         // Header msg
         joint_msg.header.seq = seq_;
         joint_msg.header.stamp = ros::Time::now();
@@ -426,7 +429,7 @@ void* publish_thread(void* args)
         contact_msg.contacts[0].indicator = leg_contact[0];
         contact_msg.contacts[1].indicator = leg_contact[1];
 
-
+        // std::cout<<int(contact_msg.contacts[0].indicator)<<std::endl;
         jointState_pub.publish(joint_msg);
         contact_pub.publish(contact_msg);
         seq_ ++;
@@ -936,7 +939,7 @@ int main(int argc, char **argv)
     setpoint(0.06,0.11,-0.26); // 0.06 0.11 -0.26
     cout<<"first step"<<endl;
     legstate_update();
-    int ret = pthread_create(&tids2[4], NULL, safety_thread, NULL);
+    int ret = pthread_create(&tids1[4], NULL, safety_thread, NULL);
     if (ret != 0){
         cout << "pthread_create4 error: error_code=" << ret << endl;
     }
@@ -1066,15 +1069,6 @@ void thread_setup(void){
         cout << "pthread_create3 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids1[4], NULL, publish_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create4 error: error_code=" << ret << endl;
-    }
-
-    ret = pthread_create(&tids1[5], NULL, subscribe_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create5 error: error_code=" << ret << endl;
-    }
 
 }
 
@@ -1157,6 +1151,16 @@ void control_threadcreate(void){
     ret = pthread_create(&tids2[3], NULL, record_thread, NULL);
     if (ret != 0){
         cout << "record_pthread error: error_code=" << ret << endl;
+    }
+
+    ret = pthread_create(&tids2[4], NULL, publish_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create4 error: error_code=" << ret << endl;
+    }
+
+    ret = pthread_create(&tids2[5], NULL, subscribe_thread, NULL);
+    if (ret != 0){
+        cout << "pthread_create5 error: error_code=" << ret << endl;
     }
 }
 

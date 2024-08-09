@@ -15,6 +15,15 @@ find_package(catkin REQUIRED COMPONENTS
   message_filters
 )
 
+add_message_files(
+  FILES
+  Contact.msg
+  ContactArray.msg
+)
+generate_messages(
+  DEPENDENCIES
+  std_msgs
+)
 find_package(Eigen3 REQUIRED)
 
 # set(QPOASES_INLUDE_DIRS /home/hxy/catkin_ws/src/licycle/third_party/qpOASES/include/qpOASES)
@@ -28,6 +37,7 @@ catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES bikebot
 #  CATKIN_DEPENDS roscpp rospy std_msgs
+  CATKIN_DEPENDS message_runtime
 #  DEPENDS system_lib
 )
 
