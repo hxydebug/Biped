@@ -1138,9 +1138,9 @@ void control_threadcreate(void){
     CPU_SET(1, &mask);//绑定cpu1
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
 
-    // CPU_ZERO(&mask);
-    // CPU_SET(3, &mask);//绑定cpu3
-    // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
+    CPU_ZERO(&mask);
+    CPU_SET(3, &mask);//绑定cpu3
+    pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
     CPU_ZERO(&mask);
     CPU_SET(2, &mask);//绑定cpu2
