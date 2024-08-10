@@ -15,7 +15,7 @@ Eigen::Vector3d COMvelocity_vicon;
 Eigen::Vector3d position_vicon;
 Eigen::Vector3d velocity_vicon;
 
-int flag = 1;
+int flag[2] = {1,1};
 
 PosVelEstimator::PosVelEstimator(Leg_state *robot, gait_generator *gait_generator, float timestep){
     _robot = robot;
@@ -158,11 +158,11 @@ void PosVelEstimator::run(){
         {
             phase = fmin(_gait_generator->normalized_phase[i], double(1));
         }
-        double trust_window = double(0.25);
+        double trust_window = double(0.3);
         // double trust_window = double(0.2);
 
         // if (phase < trust_window) {
-        // trust = phase / trust_window;
+        //     trust = phase / trust_window;
         // }
         // } else if (phase > (double(1) - trust_window)) {
         // trust = (double(1) - phase) / trust_window;
@@ -181,22 +181,35 @@ void PosVelEstimator::run(){
         // new strategy
         if(_gait_generator->leg_state[i] == 1) {
             if (fabs(dp_rel[2])<=0.2){
-                flag = 1;
+                flag[i] = 1;
                 trust = 1.0;
+                // if (phase < trust_window) {
+                //     trust = phase / trust_window;
+                // }
+                // else{
+                //     trust = 1.0;
+                // }
             }
             else{
-                if(flag==1){
+                if(flag[i]==1){
                     trust = 1.0;
+                    // if (phase < trust_window) {
+                    //     trust = phase / trust_window;
+                    // }
+                    // else{
+                    //     trust = 1.0;
+                    // }
                 }
                 else{
                     trust = 0.0;
+                    Q.block(3, 3, 3, 3) = Q.block(3, 3, 3, 3) * 100.0;
                 }
             }
             
         }
         else{
             trust = 0.0;
-            flag = 0;
+            flag[i] = 0;
         }
         _robot->leg_trust[i] = trust;
         
@@ -256,10 +269,10 @@ void PosVelEstimator::run(){
     _robot->com_velocity[0] = com_vel[0];
     _robot->com_velocity[1] = com_vel[1];
     _robot->com_velocity[2] = com_vel[2];
-    // _robot->com_position[0] = com_pos[0];
-    // _robot->com_position[1] = com_pos[1];
-    // _robot->com_position[2] = com_pos[2];
-    // _robot->com_height = com_pos[2];
+    _robot->com_position[0] = com_pos[0];
+    _robot->com_position[1] = com_pos[1];
+    _robot->com_position[2] = com_pos[2];
+    _robot->com_height = com_pos[2];
     _robot->omega_world[0] = omegaWorld[0];
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];
@@ -282,20 +295,21 @@ void PosVelEstimator::run(){
     position_vicon_body[2] -= offset_z;
     COMposition_vicon = Rbod*position_vicon_body;
     COMvelocity_vicon = velocity_vicon + Rbod * omegaBody.cross(pos_offset);
+/**********************kf***************************** */
+    _robot->vicon_COMpos[0] = COMposition_vicon[0];
+    _robot->vicon_COMpos[1] = COMposition_vicon[1];
+    _robot->vicon_COMpos[2] = COMposition_vicon[2];
 
-    // _robot->vicon_COMpos[0] = COMposition_vicon[0];
-    // _robot->vicon_COMpos[1] = COMposition_vicon[1];
-    // _robot->vicon_COMpos[2] = COMposition_vicon[2];
+/***********************vicon************************** */
+    // _robot->vicon_COMpos[0] = com_pos[0];
+    // _robot->vicon_COMpos[1] = com_pos[1];
+    // _robot->vicon_COMpos[2] = com_pos[2];
 
-    _robot->vicon_COMpos[0] = com_pos[0];
-    _robot->vicon_COMpos[1] = com_pos[1];
-    _robot->vicon_COMpos[2] = com_pos[2];
-
-    _robot->com_position[0] = COMposition_vicon[0];
-    _robot->com_position[1] = COMposition_vicon[1];
-    _robot->com_position[2] = COMposition_vicon[2];
-    _robot->com_height = COMposition_vicon[2];
-
+    // _robot->com_position[0] = COMposition_vicon[0];
+    // _robot->com_position[1] = COMposition_vicon[1];
+    // _robot->com_position[2] = COMposition_vicon[2];
+    // _robot->com_height = COMposition_vicon[2];
+/************************end***************************** */
     lpf_velocity[0].lpf(COMvelocity_vicon[0]);
     lpf_velocity[1].lpf(COMvelocity_vicon[1]);
     lpf_velocity[2].lpf(COMvelocity_vicon[2]);

@@ -243,7 +243,7 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu){
     quaToRpy(qua,rpy);
     leg_state.rpy[0] = rpy[0]-0.01;
     leg_state.rpy[1] = rpy[1];
-    leg_state.vicon_rpy[2] = rpy[2];
+    leg_state.rpy[2] = rpy[2];
     imu_received = 1;
     // cout<<rpy[2]<<endl;
 }
@@ -283,7 +283,7 @@ void viconCallback(const geometry_msgs::TransformStampedConstPtr &vicon){
     quaToRpy(qua,rpy);
     leg_state.vicon_rpy[0] = rpy[0];
     leg_state.vicon_rpy[1] = rpy[1];
-    leg_state.rpy[2] = rpy[2];
+    leg_state.vicon_rpy[2] = rpy[2];
     vicon_received = 1;
     // cout<<rpy[2]<<endl;
 }
@@ -451,7 +451,7 @@ void* compute_foot_grf_thread(void* args)
     cout<<"compute_foot_grf start!"<<endl;
 
     //初始化定时器
-    float _period = 0.001;
+    float _period = 0.005;
     auto timerFd = timerfd_create(CLOCK_MONOTONIC, 0);
     int seconds = (int)_period;
     int nanoseconds = (int)(1e9 * std::fmod(_period, 1.f));
@@ -476,7 +476,7 @@ void* compute_foot_grf_thread(void* args)
 
         /********************** running begin **********************/
         //更新数据
-        legstate_update();
+        // legstate_update();
 
         float desire_v = 0.5;//0.8
         stc.desired_xspeed = desire_v;
@@ -540,7 +540,7 @@ void* legcontrol_thread(void* args)
 
         /********************** running begin **********************/
         //更新数据
-        // legstate_update();
+        legstate_update();
 
         float desire_v = 0.5;//0.8
         swc.desired_xspeed = desire_v;
@@ -634,6 +634,7 @@ void* estimator_thread(void* args)
         t.start();
 
         /********************** running begin **********************/
+        legstate_update();
         Estimator.run();
         vel_imu = Estimator.vel_imu;
         vel_kine[0] = Estimator.vel_kine[0];
@@ -738,7 +739,8 @@ void* record_thread(void* args)
                 << vel_kine[1][0] << ", "<< vel_kine[1][1] << ", " << vel_kine[1][2] << ", "
                 << vel_imu[0] << ", "<< vel_imu[1] << ", " << vel_imu[2] << ", "
                 << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", "
-                << stc.w_com_des[2] << ", " << stc.tau_pd[0] << ", " << stc.tau_pd[1] << ", " << stc.tau_pd[2] << ", "
+                << leg_state.omega[0] << ", "<< leg_state.omega[1] << ", " << leg_state.omega[2] << ", " << leg_state.omega[2] << ", "
+                // << stc.w_com_des[2] << ", " << stc.tau_pd[0] << ", " << stc.tau_pd[1] << ", " << stc.tau_pd[2] << ", "
                 << leg_state.acc[0] << ", "<< leg_state.acc[1] << ", " << leg_state.acc[2] << ", "
                 << leg_state.leg_trust[0] << ", " << leg_state.leg_trust[1] 
                 << std::endl;
@@ -999,9 +1001,9 @@ void control_threadcreate(void){
     CPU_SET(1, &mask);//绑定cpu1
     pthread_setaffinity_np(tids2[1], sizeof(cpu_set_t), &mask) ;
 
-    // CPU_ZERO(&mask);
-    // CPU_SET(3, &mask);//绑定cpu3
-    // pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
+    CPU_ZERO(&mask);
+    CPU_SET(3, &mask);//绑定cpu3
+    pthread_setaffinity_np(tids2[2], sizeof(cpu_set_t), &mask) ;
 
     CPU_ZERO(&mask);
     CPU_SET(2, &mask);//绑定cpu2
