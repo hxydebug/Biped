@@ -235,10 +235,10 @@ void PosVelEstimator::run(){
     _robot->com_velocity[0] = com_vel[0];
     _robot->com_velocity[1] = com_vel[1];
     _robot->com_velocity[2] = com_vel[2];
-    // _robot->com_position[0] = com_pos[0];
-    // _robot->com_position[1] = com_pos[1];
-    // _robot->com_position[2] = com_pos[2];
-    // _robot->com_height = com_pos[2];
+    _robot->com_position[0] = com_pos[0];
+    _robot->com_position[1] = com_pos[1];
+    _robot->com_position[2] = com_pos[2];
+    _robot->com_height = com_pos[2];
     _robot->omega_world[0] = omegaWorld[0];
     _robot->omega_world[1] = omegaWorld[1];
     _robot->omega_world[2] = omegaWorld[2];
@@ -247,39 +247,39 @@ void PosVelEstimator::run(){
     _robot->foot_p[1] = _xhat.block(9, 0, 3, 1);
 
     /************************vicon begin************************ */
-    position_vicon[0] = _robot->vicon_pos[0] - _robot->pos_offset[0];
-    position_vicon[1] = _robot->vicon_pos[1] - _robot->pos_offset[1];
-    position_vicon[2] = _robot->vicon_pos[2];
-    velocity_vicon[0] = _robot->vicon_vel[0];
-    velocity_vicon[1] = _robot->vicon_vel[1];
-    velocity_vicon[2] = _robot->vicon_vel[2];
+    // position_vicon[0] = _robot->vicon_pos[0] - _robot->pos_offset[0];
+    // position_vicon[1] = _robot->vicon_pos[1] - _robot->pos_offset[1];
+    // position_vicon[2] = _robot->vicon_pos[2];
+    // velocity_vicon[0] = _robot->vicon_vel[0];
+    // velocity_vicon[1] = _robot->vicon_vel[1];
+    // velocity_vicon[2] = _robot->vicon_vel[2];
 
-    double offset_z = 0.20;//initial guess
-    Eigen::Vector3d pos_offset;
-    pos_offset << 0,0,-offset_z;
-    Eigen::Vector3d position_vicon_body = Rbod.transpose()*position_vicon;
-    position_vicon_body[2] -= offset_z;
-    COMposition_vicon = Rbod*position_vicon_body;
-    COMvelocity_vicon = velocity_vicon + Rbod * omegaBody.cross(pos_offset);
+    // double offset_z = 0.20;//initial guess
+    // Eigen::Vector3d pos_offset;
+    // pos_offset << 0,0,-offset_z;
+    // Eigen::Vector3d position_vicon_body = Rbod.transpose()*position_vicon;
+    // position_vicon_body[2] -= offset_z;
+    // COMposition_vicon = Rbod*position_vicon_body;
+    // COMvelocity_vicon = velocity_vicon + Rbod * omegaBody.cross(pos_offset);
 
     // _robot->vicon_COMpos[0] = COMposition_vicon[0];
     // _robot->vicon_COMpos[1] = COMposition_vicon[1];
     // _robot->vicon_COMpos[2] = COMposition_vicon[2];
 
-    _robot->vicon_COMpos[0] = com_pos[0];
-    _robot->vicon_COMpos[1] = com_pos[1];
-    _robot->vicon_COMpos[2] = com_pos[2];
+    // _robot->vicon_COMpos[0] = com_pos[0];
+    // _robot->vicon_COMpos[1] = com_pos[1];
+    // _robot->vicon_COMpos[2] = com_pos[2];
 
-    _robot->com_position[0] = COMposition_vicon[0];
-    _robot->com_position[1] = COMposition_vicon[1];
-    _robot->com_position[2] = COMposition_vicon[2];
-    _robot->com_height = COMposition_vicon[2];
+    // _robot->com_position[0] = COMposition_vicon[0];
+    // _robot->com_position[1] = COMposition_vicon[1];
+    // _robot->com_position[2] = COMposition_vicon[2];
+    // _robot->com_height = COMposition_vicon[2];
 
-    lpf_velocity[0].lpf(COMvelocity_vicon[0]);
-    lpf_velocity[1].lpf(COMvelocity_vicon[1]);
-    lpf_velocity[2].lpf(COMvelocity_vicon[2]);
-    _robot->vicon_COMvel[0] = lpf_velocity[0].last_out;
-    _robot->vicon_COMvel[1] = lpf_velocity[1].last_out;
-    _robot->vicon_COMvel[2] = lpf_velocity[2].last_out;
+    // lpf_velocity[0].lpf(COMvelocity_vicon[0]);
+    // lpf_velocity[1].lpf(COMvelocity_vicon[1]);
+    // lpf_velocity[2].lpf(COMvelocity_vicon[2]);
+    // _robot->vicon_COMvel[0] = lpf_velocity[0].last_out;
+    // _robot->vicon_COMvel[1] = lpf_velocity[1].last_out;
+    // _robot->vicon_COMvel[2] = lpf_velocity[2].last_out;
 
 }

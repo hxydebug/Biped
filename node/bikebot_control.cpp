@@ -249,7 +249,7 @@ void imuCallback(const sensor_msgs::ImuConstPtr &imu){
     quaToRpy(qua,rpy);
     leg_state.rpy[0] = rpy[0]-0.01;
     leg_state.rpy[1] = rpy[1];
-    leg_state.vicon_rpy[2] = rpy[2];
+    leg_state.rpy[2] = rpy[2];
     imu_received = 1;
     // cout<<rpy[2]<<endl;
 }
@@ -804,7 +804,7 @@ void* record_thread(void* args)
 
     //生成数据编号
     char result[100] = {0};
-    sprintf(result, "/home/hesam/0808/dataFile%s.txt", ch);
+    sprintf(result, "/home/hesam/0920/dataFile%s.txt", ch);
     ofstream dataFile;
     dataFile.open(result, ofstream::app);
 
@@ -958,8 +958,8 @@ int main(int argc, char **argv)
     while(imu_received == 0);
     cout << "Hardware is Ready!" << endl;
     //infer if vicon is ready
-    while(vicon_received == 0);
-    cout << "Hardware2 is Ready!" << endl;
+    // while(vicon_received == 0);
+    // cout << "Hardware2 is Ready!" << endl;
     //record yaw bias and xy bias
     yaw_bias = leg_state.rpy[2];
     leg_state.pos_offset[0] = leg_state.vicon_pos[0];
@@ -1066,10 +1066,10 @@ void thread_setup(void){
         cout << "pthread_create2 error: error_code=" << ret << endl;
     }
 
-    ret = pthread_create(&tids1[3], NULL, vicon_thread, NULL);
-    if (ret != 0){
-        cout << "pthread_create3 error: error_code=" << ret << endl;
-    }
+    // ret = pthread_create(&tids1[3], NULL, vicon_thread, NULL);
+    // if (ret != 0){
+    //     cout << "pthread_create3 error: error_code=" << ret << endl;
+    // }
 
 
 }
