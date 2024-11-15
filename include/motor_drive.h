@@ -5,7 +5,7 @@
 #include <iostream>
 #include "opmath.h"
 
-#define bias 0
+#define biass 0
 
 
 #define P_MIN -12.5f

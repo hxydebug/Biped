@@ -9,7 +9,7 @@ float a3[2][3] = {0};
 float kk[2][3] = {0};
 float bb[2][3] = {0};
 
-double rollMax = 2.0*PI/180;
+double rollMax = 2.0*PII/180;
 
 float kp = 8;
 float kd = 0.2;

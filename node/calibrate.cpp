@@ -72,7 +72,7 @@ float global_time = 0;
 CANMessage cbmsg[6];
 //command
 Eigen::VectorXd user_cmd;
-//yaw bias
+//yaw biass
 float yaw_bias = 0;
 
 // 互斥锁
@@ -185,18 +185,18 @@ void* Can1_thread(void* args)
         }
 
         //读取指定ID的数据
-        if( frame.data[0] == 1+bias){
+        if( frame.data[0] == 1+biass){
             for(int i=0;i<6;i++){
                 cbmsg[3].data[i] = frame.data[i];
             }
         }
-        else if( frame.data[0] == 2+bias){
+        else if( frame.data[0] == 2+biass){
             for(int i=0;i<6;i++){
                 cbmsg[4].data[i] = frame.data[i];
             }		
         }
         else{
-            if( frame.data[0] == 3+bias){
+            if( frame.data[0] == 3+biass){
                 for(int i=0;i<6;i++){
                     cbmsg[5].data[i] = frame.data[i];
                 }	
@@ -313,7 +313,7 @@ void* safety_thread(void* args)
         t.start();
 
         //angle_limit
-        if(leg_state.cbdata[0].p < -50.0*PI/180.0 || leg_state.cbdata[0].p > 60.0*PI/180.0) {
+        if(leg_state.cbdata[0].p < -50.0*PII/180.0 || leg_state.cbdata[0].p > 60.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle0 error"<<endl;
@@ -322,7 +322,7 @@ void* safety_thread(void* args)
             }  
             shut_down = 1;
         }
-        if(leg_state.cbdata[1].p < -130.0*PI/180.0 || leg_state.cbdata[1].p > 60.0*PI/180.0) {
+        if(leg_state.cbdata[1].p < -130.0*PII/180.0 || leg_state.cbdata[1].p > 60.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle1 error"<<endl;
@@ -331,7 +331,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[2].p < 35.0*PI/180.0 || leg_state.cbdata[2].p > 150.0*PI/180.0) {
+        if(leg_state.cbdata[2].p < 35.0*PII/180.0 || leg_state.cbdata[2].p > 150.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle2 error"<<endl;
@@ -340,7 +340,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[3].p < -60.0*PI/180.0 || leg_state.cbdata[3].p > 50.0*PI/180.0) {
+        if(leg_state.cbdata[3].p < -60.0*PII/180.0 || leg_state.cbdata[3].p > 50.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle3 error"<<endl;
@@ -349,7 +349,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[4].p < -60.0*PI/180.0 || leg_state.cbdata[4].p > 130.0*PI/180.0) {
+        if(leg_state.cbdata[4].p < -60.0*PII/180.0 || leg_state.cbdata[4].p > 130.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle4 error"<<endl;
@@ -358,7 +358,7 @@ void* safety_thread(void* args)
             } 
             shut_down = 1;
         }
-        if(leg_state.cbdata[5].p < -150.0*PI/180.0 || leg_state.cbdata[5].p > -35.0*PI/180.0) {
+        if(leg_state.cbdata[5].p < -150.0*PII/180.0 || leg_state.cbdata[5].p > -35.0*PII/180.0) {
             damp_motors();
             if(print_flag==1) {
                 cout<<"angle5 error"<<endl;
@@ -531,7 +531,7 @@ void* estimator_thread(void* args)
         // cout<<"maxRuntime:"<<_maxRuntime<<endl;
         // cout<<"Runtime:"<<_lastRuntime<<endl;
 
-        // cout<<leg_state.varphi/ PI * 180.0<<endl;
+        // cout<<leg_state.varphi/ PII * 180.0<<endl;
         esti_runtime = _lastRuntime;
         esti_periodtime = _lastPeriodTime;
         /// 延时
@@ -676,7 +676,7 @@ int main(int argc, char **argv)
         }
         int i=1;
         cmd_transfer(i+4,&R_msgs[i],desired_joint_angle,0,150,1.0,0);
-        can1_tx(R_msgs[i].data,i+1+bias);
+        can1_tx(R_msgs[i].data,i+1+biass);
         
 
         
@@ -882,7 +882,7 @@ void can1_tx(uint8_t tdata[],uint8_t id){
 void reset_motors(){
     for(int i=1;i<=3;i++){
 		can0_tx(reset,i);
-		can1_tx(reset,i+bias);
+		can1_tx(reset,i+biass);
         //sleep
         Sleep_us(300);
 	}
@@ -893,7 +893,7 @@ void damp_motors(){
         cmd_transfer(i+1,&mes,0,0,0,2,0);
         can0_tx(mes.data,i+1);
         cmd_transfer(i+4,&mes,0,0,0,2,0);
-        can1_tx(mes.data,i+1+bias);
+        can1_tx(mes.data,i+1+biass);
         //sleep
         Sleep_us(300);
 	}
@@ -902,7 +902,7 @@ void damp_motors(){
 void setup_motors(){
     for(int i=1;i<=3;i++){
         can0_tx(set_foc,i);
-        can1_tx(set_foc,i+bias);
+        can1_tx(set_foc,i+biass);
         //sleep
         Sleep_us(300);
 
@@ -916,7 +916,7 @@ void motor_control(Leg_command leg_cmd){
         cmd_transfer(i+1,&L_msgs[i],0,0,0,kd,leg_cmd.torque[i]);
         can0_tx(L_msgs[i].data,i+1);
         cmd_transfer(i+4,&R_msgs[i],0,0,0,kd,leg_cmd.torque[i+3]);
-        can1_tx(R_msgs[i].data,i+1+bias);
+        can1_tx(R_msgs[i].data,i+1+biass);
         //延时
         Sleep_us(300);
 	}
@@ -924,7 +924,7 @@ void motor_control(Leg_command leg_cmd){
     cmd_transfer(i+1,&L_msgs[i],0,0,0,kd,leg_cmd.torque[i]);
     can0_tx(L_msgs[i].data,i+1);
     cmd_transfer(i+4,&R_msgs[i],0,0,0,kd,leg_cmd.torque[i+3]);
-    can1_tx(R_msgs[i].data,i+1+bias);
+    can1_tx(R_msgs[i].data,i+1+biass);
 }
 
 void motor_cmd_write(Motor_cmd Mcmd){
@@ -933,7 +933,7 @@ void motor_cmd_write(Motor_cmd Mcmd){
         cmd_transfer(i+1, &L_msgs[i], Mcmd.cmd[i].p, Mcmd.cmd[i].v, Mcmd.cmd[i].kp, Mcmd.cmd[i].kd, Mcmd.cmd[i].t);
         can0_tx(L_msgs[i].data,i+1);
         cmd_transfer(i+4, &R_msgs[i], Mcmd.cmd[i+3].p, Mcmd.cmd[i+3].v, Mcmd.cmd[i+3].kp, Mcmd.cmd[i+3].kd, Mcmd.cmd[i+3].t);
-        can1_tx(R_msgs[i].data,i+1+bias);
+        can1_tx(R_msgs[i].data,i+1+biass);
         //延时
         Sleep_us(300);
 	}
@@ -941,7 +941,7 @@ void motor_cmd_write(Motor_cmd Mcmd){
     cmd_transfer(i+1, &L_msgs[i], Mcmd.cmd[i].p, Mcmd.cmd[i].v, Mcmd.cmd[i].kp, Mcmd.cmd[i].kd, Mcmd.cmd[i].t);
     can0_tx(L_msgs[i].data,i+1);
     cmd_transfer(i+4, &R_msgs[i], Mcmd.cmd[i+3].p, Mcmd.cmd[i+3].v, Mcmd.cmd[i+3].kp, Mcmd.cmd[i+3].kd, Mcmd.cmd[i+3].t);
-    can1_tx(R_msgs[i].data,i+1+bias);
+    can1_tx(R_msgs[i].data,i+1+biass);
 }
 
 void footPoint_pos_Inf(){
@@ -961,8 +961,8 @@ void footPoint_pos_Inf(){
     cout<<"right foot position: "<<p0[1].x<<","<<p0[1].y<<","<<p0[1].z<<endl;
     Inv_kinematics(&angle[0],&p0[0],0);
     Inv_kinematics(&angle[1],&p0[1],1);
-    cout<<"left leg angle: "<<angle[0].q[0]*180/PI<<","<<angle[0].q[1]*180/PI<<","<<angle[0].q[2]*180/PI;
-    cout<<"right leg angle: "<<angle[1].q[0]*180/PI<<","<<angle[1].q[1]*180/PI<<","<<angle[1].q[2]*180/PI;
+    cout<<"left leg angle: "<<angle[0].q[0]*180/PII<<","<<angle[0].q[1]*180/PII<<","<<angle[0].q[2]*180/PII;
+    cout<<"right leg angle: "<<angle[1].q[0]*180/PII<<","<<angle[1].q[1]*180/PII<<","<<angle[1].q[2]*180/PII;
 
 }
 
@@ -1022,11 +1022,11 @@ void setpoint(float x,float y,float z){
             cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,8,0.2,0);
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,8,0.2,0);
-            can1_tx(R_msgs[i].data,i+1+bias);
+            can1_tx(R_msgs[i].data,i+1+biass);
             Sleep_us(300);
         }
-        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        // cout<<L_angle.q[0]*180/PII<<","<<L_angle.q[1]*180/PII<<","<<L_angle.q[2]*180/PII<<","
+        //     <<R_angle.q[0]*180/PII<<","<<R_angle.q[1]*180/PII<<","<<R_angle.q[2]*180/PII<<endl;
     }
 }
 
@@ -1086,14 +1086,14 @@ void setpoint1(float x,float y,float z){
             cmd_transfer(i+1,&L_msgs[i],L_angle.q[i],0,20,0.2,0);
             can0_tx(L_msgs[i].data,i+1);
             cmd_transfer(i+4,&R_msgs[i],R_angle.q[i],0,20,0.2,0);
-            can1_tx(R_msgs[i].data,i+1+bias);
+            can1_tx(R_msgs[i].data,i+1+biass);
             Sleep_us(300);
         }
-        // cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-        //     <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+        // cout<<L_angle.q[0]*180/PII<<","<<L_angle.q[1]*180/PII<<","<<L_angle.q[2]*180/PII<<","
+        //     <<R_angle.q[0]*180/PII<<","<<R_angle.q[1]*180/PII<<","<<R_angle.q[2]*180/PII<<endl;
     }
-    cout<<L_angle.q[0]*180/PI<<","<<L_angle.q[1]*180/PI<<","<<L_angle.q[2]*180/PI<<","
-        <<R_angle.q[0]*180/PI<<","<<R_angle.q[1]*180/PI<<","<<R_angle.q[2]*180/PI<<endl;
+    cout<<L_angle.q[0]*180/PII<<","<<L_angle.q[1]*180/PII<<","<<L_angle.q[2]*180/PII<<","
+        <<R_angle.q[0]*180/PII<<","<<R_angle.q[1]*180/PII<<","<<R_angle.q[2]*180/PII<<endl;
 
 }
 

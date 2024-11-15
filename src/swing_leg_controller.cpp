@@ -150,8 +150,8 @@ Eigen::VectorXd swing_leg_controller::get_action(Eigen::VectorXd user_cmd){
   double feetR[2], feetInitAngle[2];
   feetR[0] = wid/2 + Len0-0.03;
   feetR[1] = wid/2 + Len0-0.03;
-  feetInitAngle[0] = 95.0*PI/180.0;
-  feetInitAngle[1] = -95.0*PI/180.0;
+  feetInitAngle[0] = 95.0*PII/180.0;
+  feetInitAngle[1] = -95.0*PII/180.0;
 
   for(int i(0);i<2;i++){
     Eigen::VectorXd bias_pos = hip_positions[i];
@@ -385,7 +385,7 @@ Position gen_swing_foot_trajectory(float input_phase, Position start_pos, Positi
   ***/
 
   float phase = input_phase;
-  if(input_phase <= 0.5) phase = 0.8 * sin(input_phase * PI);
+  if(input_phase <= 0.5) phase = 0.8 * sin(input_phase * PII);
   else phase = 0.8 + (input_phase - 0.5) * 0.4;
 
   Position pos;
@@ -405,17 +405,17 @@ Position gen_swing_foot_trajectory(float input_phase, Position start_pos, Positi
 //   Eigen::Vector3d ans;
 //   if (isZ) {
 //     t_whole = t_whole * 0.5;
-//     float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-//     float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-//     float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+//     float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PII * period / t_whole) / (2 * PII));
+//     float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PII * period / t_whole));
+//     float a_des = 2 * PII * sin(2 * PII * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
 //     ans << p_des, v_des, a_des;
 //   }
 //   else{
 //     if (phase <= 0.99){
 //       t_whole = t_whole * 0.99;
-//       float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-//       float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-//       float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+//       float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PII * period / t_whole) / (2 * PII));
+//       float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PII * period / t_whole));
+//       float a_des = 2 * PII * sin(2 * PII * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
 //       ans << p_des, v_des, a_des;
 //     }
 //     else{
@@ -435,9 +435,9 @@ Eigen::VectorXd simple_cal_p(float p_start, float p_end, float period, float t_w
   if (isZ) {
     t_whole = t_whole * 0.5;
   }
-  float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PI * period / t_whole) / (2 * PI));
-  float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PI * period / t_whole));
-  float a_des = 2 * PI * sin(2 * PI * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
+  float p_des = p_start + (p_end - p_start) * (period / t_whole - sin(2 * PII * period / t_whole) / (2 * PII));
+  float v_des = (p_end - p_start) / t_whole * (1 - cos(2 * PII * period / t_whole));
+  float a_des = 2 * PII * sin(2 * PII * period / t_whole)*(p_end - p_start) / (t_whole * t_whole);
   Eigen::Vector3d ans;
   ans << p_des, v_des, a_des;
   return ans;

@@ -37,7 +37,7 @@ void cb_trans(CANMessage *msg,CBData *cb){
 
 void cb_Inf(CBData *cb){
 		printf("ID:%d ",cb->ID);
-		printf("p:%f ",cb->p*180.0/PI);
+		printf("p:%f ",cb->p*180.0/PII);
 //		printf("p:%f ",cb->p);
 //		printf("v:%f ",cb->v);
 		// printf("T:%f ",cb->t);
@@ -50,30 +50,30 @@ void cmd_transfer(uint8_t id,CANMessage *msg,float p,float v,float kp,float kd,f
     
     //角度限制
     if(id == 1){
-        if(p < -50.0*PI/180.0) p = -50.0*PI/180.0;
-        if(p > 60.0*PI/180.0) p = 60.0*PI/180.0;
+        if(p < -50.0*PII/180.0) p = -50.0*PII/180.0;
+        if(p > 60.0*PII/180.0) p = 60.0*PII/180.0;
     }
     if(id == 4){
-        if(p < -60.0*PI/180.0) p = -60.0*PI/180.0;
-        if(p > 50.0*PI/180.0) p = 50.0*PI/180.0;
+        if(p < -60.0*PII/180.0) p = -60.0*PII/180.0;
+        if(p > 50.0*PII/180.0) p = 50.0*PII/180.0;
     }
 
     if(id == 2){
-        if(p < -120.0*PI/180.0) p = -120.0*PI/180.0;
-        if(p > 60.0*PI/180.0) p = 60.0*PI/180.0;
+        if(p < -120.0*PII/180.0) p = -120.0*PII/180.0;
+        if(p > 60.0*PII/180.0) p = 60.0*PII/180.0;
     }
     if(id == 5){
-        if(p < -60.0*PI/180.0) p = -60.0*PI/180.0;
-        if(p > 120.0*PI/180.0) p = 120.0*PI/180.0;
+        if(p < -60.0*PII/180.0) p = -60.0*PII/180.0;
+        if(p > 120.0*PII/180.0) p = 120.0*PII/180.0;
     }
     
     if(id == 3){
-        if(p < 35.0*PI/180.0) p = 35.0*PI/180.0;
-        if(p > 150.0*PI/180.0) p = 150.0*PI/180.0;
+        if(p < 35.0*PII/180.0) p = 35.0*PII/180.0;
+        if(p > 150.0*PII/180.0) p = 150.0*PII/180.0;
     }
     if(id == 6){
-        if(p < -150.0*PI/180.0) p = -150.0*PI/180.0;
-        if(p > -35.0*PI/180.0) p = -35.0*PI/180.0;
+        if(p < -150.0*PII/180.0) p = -150.0*PII/180.0;
+        if(p > -35.0*PII/180.0) p = -35.0*PII/180.0;
     }
 
     //return absolute angle by plus bias angle

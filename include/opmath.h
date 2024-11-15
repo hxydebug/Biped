@@ -5,7 +5,7 @@
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
-#define PI 3.1415926535
+#define PII 3.1415926535
 
 //math tool
 Eigen::Matrix3d rpy2romatrix(double roll,double pitch,double yaw);
